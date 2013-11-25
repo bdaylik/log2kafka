@@ -53,7 +53,6 @@ void Mapper::map(avro::GenericDatum& datum, const string& entry) {
     if (regex_match(entry, what, this->_regex)) {
 
         LOG4CXX_DEBUG(logger, "Valid entry detected: " << what[0].str());
-        LOG4CXX_DEBUG(logger, "Group count: " << what.size());
 
         if (datum.type() == avro::AVRO_RECORD) {
             std::istringstream ss;
