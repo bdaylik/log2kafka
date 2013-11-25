@@ -39,7 +39,7 @@ To pipe the log entries under Apache add a new **CustomLog** instruction in the 
 Example:
 
 ```apache
-  CustomLog "|log2kafka -t test\_topic -h kafka_broker -p 9092 -s apache-combined -l /etc/log2kafka/log4cxx.properties" combined
+  CustomLog "|log2kafka -t test_topic -h kafka_broker -p 9092 -s apache-combined -l /etc/log2kafka/log4cxx.properties" combined
 ```
 
 TODO
