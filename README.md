@@ -1,6 +1,7 @@
 log2kafka
 =========
 
+> TODO: Elaborate here
 
 Requirements
 ------------
@@ -11,7 +12,6 @@ Requirements
 
 Build
 -----
-
 Building from sources requires cmake 2.6 or later.
 
 To create a release under Unix or Cygwin use:
@@ -32,7 +32,7 @@ To get usage help execute:
   ./log2kafka --help
 ```
 
-**Apache Log Configuration**
+### Apache Log Configuration
 
 To pipe the log entries under Apache add a new **CustomLog** instruction in the server configuration file. 
 
@@ -51,4 +51,5 @@ TODO
 
 License
 -------
-Licensed under the Apache Software License 2.0. See [![LICENSE](LICENSE)](LICENSE) file.
+
+Licensed under the Apache Software License 2.0. See [LICENSE](LICENSE) file.
