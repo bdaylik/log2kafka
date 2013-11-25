@@ -1,5 +1,4 @@
-pattern : (-?\d+)#(\d+.\d+.\d+.\d+)\s+-\s+-\s+\[(\d+\/\S+\/\d+:\d+:\d+:\d+\s+[-+]{0,1}\d+)\]\s+\"(.*?)\s+HTTP\/\d+\.\d+\"\s+(\d+)\s+(\d+)\s+\"(.*?)\"\s+\"(.*?)\"
-TODO: pattern alias mechaninism to simplify user configuration and minimize errors
+pattern : (\d+.\d+.\d+.\d+)\s+-\s+-\s+\[(\d+\/\S+\/\d+:\d+:\d+:\d+\s+[-+]{0,1}\d+)\]\s+\"(.*?)\s+HTTP\/\d+\.\d+\"\s+(\d+)\s+(\-|\d+)\s+\"(.*?)\"\s+\"(.*?)\"
 //--AVRO--
 {
     "namespace": "openbus",
@@ -7,7 +6,6 @@ TODO: pattern alias mechaninism to simplify user configuration and minimize erro
     "name": "ApacheCombined",
     "doc": "Apache log entry (combined format)",
     "fields": [
-        {"name": "test", "type": "int"},
         {"name": "host", "type": "string"},
         {"name": "datetime", "type": "string"},
         {"name": "request", "type": "string"},
