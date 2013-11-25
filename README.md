@@ -49,3 +49,6 @@ TODO
 * Make the apache log4cxx optional.
 * Create installation script.
 
+License
+-------
+Licensed under the Apache Software License 2.0. See [![LICENSE](LICENSE)](LICENSE) file.
