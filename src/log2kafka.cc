@@ -25,9 +25,14 @@ namespace kafka = LibKafka;
 
 LoggerPtr logger(Logger::getLogger(BUILD_NAME));
 
+/* Forward function declaration */
+
 void sendMessage(const po::variables_map& vm, const string& entry);
 inline void debugArguments(const po::variables_map& vm);
 
+/**
+ * Main function.
+ */
 int main(int argc, char** argv) {
 
     int result = EXIT_SUCCESS;
@@ -42,7 +47,7 @@ int main(int argc, char** argv) {
     ("port,p", po::value<std::size_t>()->default_value(Constants::DEFAULT_PORT), "connection port")
     ("log,l", po::value<std::string>(), "log4cxx configuration file path")
     ("schema,s", po::value<std::string>(),
-            "avro schema name to use for serialization - if not indicated then the raw entry be sent")
+            "avro schema name to use for serialization - if not indicated then the raw entry will be sent")
     ("topic,t", po::value<std::string>()->default_value(""), "kafka topic")
     ("schema-path", po::value<std::string>()->default_value(Constants::DEFAULT_SCHEMA_PATH),
             "path to look for schema definitions")
@@ -94,40 +99,31 @@ int main(int argc, char** argv) {
                 sendMessage(vm, entry);
             }
             else { // read from standard input
-                string line;
 
                 LOG4CXX_DEBUG(logger, "Read from standard input");
 
-                getline(cin, line);
+                /* Read a buffer's worth of log file data, exiting on errors
+                 * or end of file.
+                 */
 
-//                while (cin && cin.good()) {
-//                    if (cin.rdbuf()->in_avail() > 0) {
-//                        LOG4CXX_DEBUG(logger, "break");
-//
-//                        LOG4CXX_DEBUG(logger, "cycle 2");
-//                        LOG4CXX_DEBUG(logger, "cin size: " << (cin.rdbuf()->in_avail()));
-//
-//                        getline(cin, line);
-//
-//                        LOG4CXX_DEBUG(logger, "cin n: " << n);
-//
-//                        n += 10;
-//                        LOG4CXX_DEBUG(logger, "cin line: " << line);
-//
-//                        sendMessage(vm, line);
-//                    }
-//                }
+                for (;;) {
+                    string line;
+                    getline(cin, line);
 
-                sendMessage(vm, line);
+                    if (cin.fail()) break;
+
+                    sendMessage(vm, line);
+                }
             }
-
         }
         catch (exception& e) {
-            LOG4CXX_ERROR(logger, "Unexpected exception: " << n << "::" << e.what());
+            cerr << "Unexpected exception: " << e.what() << endl;
+            LOG4CXX_ERROR(logger, "Unexpected exception: " << e.what());
             result = EXIT_FAILURE;
         }
         catch (...) {
-            LOG4CXX_ERROR(logger, "Unexpected exception " << n << "::");
+            cerr << "Unexpected exception." << endl;
+            LOG4CXX_ERROR(logger, "Unexpected exception ");
             result = EXIT_FAILURE;
         }
     }
