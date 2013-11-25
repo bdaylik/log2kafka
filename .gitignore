@@ -16,3 +16,14 @@
 *.exe
 *.out
 *.app
+
+build/
+log2kafka.log
+cmake_build.sh
+cmake-linux-debug.sh
+debug.sh
+gdb-cygwin.txt
+gdb-linux.txt
+run.sh
+sync-from-server.sh
+sync-to-server.sh
