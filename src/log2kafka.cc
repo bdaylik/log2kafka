@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
             "producer client name/id")
     ("host,h", po::value<std::string>()->default_value(Constants::DEFAULT_HOST), "hostname/ip")
     ("port,p", po::value<std::size_t>()->default_value(Constants::DEFAULT_PORT), "connection port")
-    ("log,l", po::value<std::string>(), "log file path")
+    ("log,l", po::value<std::string>(), "log4cxx configuration file path")
     ("schema,s", po::value<std::string>(),
             "avro schema name to use for serialization - if not indicated then the raw entry be sent")
     ("topic,t", po::value<std::string>()->default_value(""), "kafka topic")
