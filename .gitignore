@@ -19,7 +19,6 @@
 
 build/
 log2kafka.log
-cmake_build.sh
 cmake-linux-debug.sh
 debug.sh
 gdb-cygwin.txt
