@@ -30,7 +30,7 @@ Serializer::Serializer() {
 Serializer::Serializer(string path) :
         schemasBasePath(path) {
 
-    LOG4CXX_DEBUG(logger, "Base path to schemas established to = " << path);
+    LOG4CXX_DEBUG(logger, "Schema established to = " << path);
 }
 
 Serializer::~Serializer() {
