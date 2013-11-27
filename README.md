@@ -94,7 +94,9 @@ To get usage help execute:
 ./log2kafka --help
 ```
 
-### Apache Log Configuration
+### Piped Log Configuration
+
+#### Apache
 
 To pipe the log entries under Apache add a new **CustomLog** instruction in the server configuration file. 
 
@@ -103,6 +105,32 @@ Example:
 ```apache
 CustomLog "|log2kafka -t test_topic -h kafka_broker -p 9092 -s apache-combined -l /etc/log2kafka/log4cxx.properties" combined
 ```
+
+#### Tomcat
+
+1. Edit the bin/catalina.sh file.
+
+2. Find the following line and comment it out.
+
+```
+touch "$CATALINA_OUT"
+```
+
+3. Find the following line (there should be two instances of this line, replace both)
+
+```
+>> "$CATALINA_OUT" 2>&1 &
+```
+
+and replace it with this line
+
+```
+2>&1 |/usr/local/bin/log2kafka <arguments> &
+```
+
+4. Save catalina.sh
+
+5. Restart Tomcat
 
 TODO
 ----
