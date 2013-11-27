@@ -6,22 +6,82 @@ log2kafka
 Requirements
 ------------
 
+* [Boost library](http://www.boost.org) version 1.38 or later. Apart from the header-only libraries of Boost, log2kafka requires filesystem, system, program_options and xpressive libraries.
 * [Kafka C++ Client](https://github.com/adobe-research/libkafka)
 * [Avro C++](http://avro.apache.org/docs/current/api/cpp/html/index.html)
 * [Apache log4cxx](http://logging.apache.org/log4cxx/)
 
-Build
------
-Building from sources requires cmake 2.6 or later.
+For Boost and log4cxx dependencies you could use the following installation procedures:
 
-To create a release under Unix or Cygwin use:
+On **Red Hat**:
 
 ```bash
-  ./cmake_build.sh
+    sudo yum install boost apr apr-util
 ```
 
-Check the resulting binary in the ``build/release/src`` folder.
+On **Debian/Ubuntu**:
 
+```bash
+    sudo apt-get install boost apr apr-util
+```
+
+For Kafka and Avro C++ libraries see the [Installation] section.
+
+
+Installation
+------------
+
+You can download a distribution package for your platform here:
+
+>> TODO: indicate link
+
+Or build the project from sources.
+
+### Build from sources
+
+Building from sources requires cmake 2.6 or later. 
+
+To build under Unix or Cygwin use:
+
+```bash
+  ./cmake_run.sh
+```
+
+To create a distribution package use:
+
+```bash
+  ./cmake_run.sh package
+```
+
+Depending of your plaform, you could find archives and installation scripts in the `build/release` or `dist` folder.
+
+### Install
+
+* If you use an archive file, this can be uncompressed directly over your filesystem. The have the following folder layout:
+
+- etc
+  `- log2kafka
+- usr
+  |- local
+  |  |- bin
+  |  |- include
+  |  |  |- avro
+  |  |  |- libkafka
+  |  |  `- log4cxx
+  |  `- lib
+  `- share
+     `- doc
+        `- log2kafka-<version>
+        
+* In the case of use an installation script (ej. log2kafka-1.0.0-Linux.sh), this will install log2kafka under <current folder>/log2kafka and has the same folder layout of the archive file described above; to install in another location specify --prefix=<location> when running the installation script.
+
+Example:
+
+```bash
+  ./log2kafka-1.0.0-Linux.sh --prefix=<location>
+```
+
+When prompted, answer "no" to install in the folder that you has indicated with the prefix argument.
 
 Usage
 -----
