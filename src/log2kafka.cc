@@ -80,8 +80,6 @@ int main(int argc, char** argv) {
 
     /* Select action course route */
 
-    int n = 0;
-
     if (vm.count("help")) {
         cout << description;
     }
@@ -99,15 +97,15 @@ int main(int argc, char** argv) {
                 sendMessage(vm, entry);
             }
             else { // read from standard input
-
                 LOG4CXX_DEBUG(logger, "Read from standard input");
 
                 /* Read a buffer's worth of log file data, exiting on errors
                  * or end of file.
                  */
 
+                string line;
+
                 for (;;) {
-                    string line;
                     getline(cin, line);
 
                     if (cin.fail()) break;
