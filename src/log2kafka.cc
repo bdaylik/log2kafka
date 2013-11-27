@@ -66,12 +66,19 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
+    /* Configure logger */
+
     if (vm.count("log")) {
         File logconfig(vm["log"].as<string>());
         PropertyConfigurator::configure(logconfig);
     }
-    else {
+
+    if (logger->getAllAppenders().size() == 0) {
+
+        // No appenders configured. Default to Console with WARN level
+
         BasicConfigurator::configure();
+        logger->setLevel(Level::getWarn());
     }
 
     if (LOG4CXX_UNLIKELY(logger->isDebugEnabled())) {
@@ -99,9 +106,7 @@ int main(int argc, char** argv) {
             else { // read from standard input
                 LOG4CXX_DEBUG(logger, "Read from standard input");
 
-                /* Read a buffer's worth of log file data, exiting on errors
-                 * or end of file.
-                 */
+                /* Read a buffer's worth of log file data, exiting on errors */
 
                 string line;
 
