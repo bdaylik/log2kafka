@@ -78,6 +78,11 @@ if (LOG4CXX_FOUND)
 	set(LOG4CXX_INCLUDE_DIRS ${LOG4CXX_INCLUDE_DIR})
 	set(LOG4CXX_LIBRARIES ${LOG4CXX_LIBRARY})
 	
+    get_filename_component(LOG4CXX_LIBRARY_DIR ${LOG4CXX_LIBRARY} PATH)
+    get_filename_component(LOG4CXX_LIBRARY_NAME ${LOG4CXX_LIBRARY} NAME_WE)
+    
+    mark_as_advanced(LOG4CXX_LIBRARY_DIR LOG4CXX_LIBRARY_NAME)
+
 	message (STATUS "Include directories: ${LOG4CXX_INCLUDE_DIRS}") 
 	message (STATUS "Libraries: ${LOG4CXX_LIBRARIES}") 
 endif ()

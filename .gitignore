@@ -18,6 +18,7 @@
 *.app
 
 build/
+dist/
 log2kafka.log
 cmake-linux-debug.sh
 debug.sh

@@ -78,6 +78,11 @@ if (AVRO_FOUND)
     set(AVRO_LIBRARIES ${AVRO_LIBRARY})
     set(AVRO_INCLUDE_DIRS ${AVRO_INCLUDE_DIR})
 	
+    get_filename_component(AVRO_LIBRARY_DIR ${AVRO_LIBRARY} PATH)
+    get_filename_component(AVRO_LIBRARY_NAME ${AVRO_LIBRARY} NAME_WE)
+    
+    mark_as_advanced(AVRO_LIBRARY_DIR AVRO_LIBRARY_NAME)
+
 	message (STATUS "Include directories: ${AVRO_INCLUDE_DIRS}") 
 	message (STATUS "Libraries: ${AVRO_LIBRARIES}") 
 endif ()

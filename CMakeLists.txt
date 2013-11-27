@@ -13,9 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 set(CMAKE_LEGACY_CYGWIN_WIN32 0)
 cmake_minimum_required (VERSION 2.6)
+
 project (log2kafka)
 
 set (TARGET_VERSION_MAJOR 1)
@@ -53,13 +53,13 @@ if (CMAKE_COMPILER_IS_GNUCXX)
     set (CMAKE_CXX_FLAGS_MINSIZEREL     "${CMAKE_CXX_FLAGS_MINSIZEREL} -Os -DNDEBUG")
     set (CMAKE_CXX_FLAGS_RELEASE        "${CMAKE_CXX_FLAGS_RELEASE} -O4 -DNDEBUG")
     set (CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -O2 -g")
-endif ()
 
 # Visual Studio specifics
-if (MSVC)
+elseif (MSVC)
     # Warning Level 4 for Debug builds
     list(APPEND CMAKE_CXX_FLAGS_DEBUG " /W4")
     list(REMOVE_DUPLICATES CMAKE_CXX_FLAGS_DEBUG)
+
 endif ()
 
 set (CMAKE_PREFIX_PATH "/usr/local")
@@ -74,6 +74,7 @@ include_directories (${Boost_INCLUDE_DIRS})
 message (STATUS "Include directories: ${Boost_INCLUDE_DIR}")
 message (STATUS "Libraries: ${Boost_LIBRARIES}")
 
+
 # Find ZLib
 
 message ("\nLooking for ZLib codec headers and libraries")
@@ -82,33 +83,36 @@ message (STATUS "Include directories: ${ZLIB_INCLUDE_DIRS}")
 message (STATUS "Libraries: ${ZLIB_LIBRARIES}")
 
 if (ZLIB_FOUND)
-    set(ZLIB_PKG zlib)
-    add_definitions(-DDEFLATE_CODEC)
-    include_directories(${ZLIB_INCLUDE_DIRS})
-    message(STATUS "** Enabled deflate codec **")
-else (ZLIB_FOUND)
-    set(ZLIB_PKG "")
-    set(ZLIB_LIBRARIES "")
-    message(STATUS "** Disabled deflate codec. zlib not found. **")
-endif (ZLIB_FOUND)
+    set (ZLIB_PKG zlib)
+    add_definitions (-DDEFLATE_CODEC)
+    include_directories (${ZLIB_INCLUDE_DIRS})
+    message (STATUS "** Enabled deflate codec **")
+
+else ()
+    set (ZLIB_PKG "")
+    set (ZLIB_LIBRARIES "")
+    message (STATUS "** Disabled deflate codec. zlib not found. **")
+
+endif ()
+
 
 # Find Snappy
 
 message ("\nLooking for Snappy codec headers and libraries")
 find_package(Snappy)
-message (STATUS "Include directories: ${SNAPPY_INCLUDE_DIRS}")
-message (STATUS "Libraries: ${SNAPPY_LIBRARIES}")
 
 if (SNAPPY_FOUND AND ZLIB_FOUND)  # Snappy borrows crc32 from zlib
-    set(SNAPPY_PKG libsnappy)
-    add_definitions(-DSNAPPY_CODEC)
+    set (SNAPPY_PKG libsnappy)
+    add_definitions (-DSNAPPY_CODEC)
     include_directories (${SNAPPY_INCLUDE_DIRS})
-    message(STATUS "** Enabled snappy codec **")
-else (SNAPPY_FOUND AND ZLIB_FOUND)
-    set(SNAPPY_PKG "")
-    set(SNAPPY_LIBRARIES "")
-    message(STATUS "** Disabled snappy codec. libsnappy not found or zlib not found. **")
-endif (SNAPPY_FOUND AND ZLIB_FOUND)
+    message (STATUS "** Enabled snappy codec **")
+
+else ()
+    set (SNAPPY_PKG "")
+    set (SNAPPY_LIBRARIES "")
+    message (STATUS "** Disabled snappy codec. libsnappy not found or zlib not found. **")
+
+endif ()
 
 # Find others
 
@@ -138,6 +142,45 @@ set (LIBS
 
 include (InstallRequiredSystemLibraries)
 
-add_subdirectory (src)
 
-#install(DIRECTORY schemas/ DESTINATION schemas)
+# Package settings
+
+set (CPACK_SET_DESTDIR ON)
+set (CPACK_INCLUDE_TOPLEVEL_DIRECTORY OFF)
+#set (CPACK_PACKAGING_INSTALL_PREFIX "")
+set (CPACK_PACKAGE_DESCRIPTION_SUMMARY "${CMAKE_PROJECT_NAME} - Log to Kafka Producer")
+set (CPACK_PACKAGE_VENDOR "Produban")
+set (CPACK_PACKAGE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/dist")
+set (CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
+set (CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+set (CPACK_PACKAGE_VERSION_MAJOR "1")
+set (CPACK_PACKAGE_VERSION_MINOR "0")
+set (CPACK_PACKAGE_VERSION_PATCH "0")
+set (CPACK_PACKAGE_INSTALL_DIRECTORY "/")
+
+if (WIN32 AND NOT UNIX)
+  # There is a bug in NSI that does not handle full unix paths properly. Make
+  # sure there is at least one set of four (4) backlasshes.
+  set (CPACK_PACKAGE_ICON "${CMake_SOURCE_DIR}/Utilities/Release\\\\InstallIcon.bmp")
+  set (CPACK_NSIS_INSTALLED_ICON_NAME "bin\\\\${CMAKE_PROJECT_NAME}.exe")
+  set (CPACK_NSIS_DISPLAY_NAME "${CPACK_PACKAGE_INSTALL_DIRECTORY} ${CPACK_PACKAGE_DESCRIPTION_SUMMARY}")
+  #set (CPACK_NSIS_HELP_LINK "http:\\\\\\\\www.${CMAKE_PROJECT_NAME}.org")
+  #set (CPACK_NSIS_URL_INFO_ABOUT "http:\\\\\\\\www.${CMAKE_PROJECT_NAME}.com")
+  #set (CPACK_NSIS_CONTACT "produban@${CMAKE_PROJECT_NAME}.com")
+  #set (CPACK_NSIS_MODIFY_PATH ON)
+
+else ()
+  set (CPACK_STRIP_FILES "bin/${CMAKE_PROJECT_NAME}")
+  set (CPACK_SOURCE_STRIP_FILES "")
+
+endif ()
+
+if (CYGWIN)
+    set (CPACK_CYGWIN_PATCH_NUMBER "0")
+endif ()
+
+set (CPACK_PACKAGE_EXECUTABLES "${CMAKE_PROJECT_NAME}" "${CMAKE_PROJECT_NAME}")
+
+include (CPack)
+
+add_subdirectory (src)

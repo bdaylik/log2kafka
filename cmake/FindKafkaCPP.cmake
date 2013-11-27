@@ -70,6 +70,11 @@ if (KAFKA_FOUND)
 	set(KAFKA_INCLUDE_DIRS ${KAFKA_INCLUDE_DIR})
 	set(KAFKA_LIBRARIES ${KAFKA_LIBRARY})
 	
+    get_filename_component (KAFKA_LIBRARY_DIR ${KAFKA_LIBRARY} PATH)
+    get_filename_component (KAFKA_LIBRARY_NAME ${KAFKA_LIBRARY} NAME_WE)
+    
+    mark_as_advanced (KAFKA_LIBRARY_DIR KAFKA_LIBRARY_NAME)
+    
 	message (STATUS "Include directories: ${KAFKA_INCLUDE_DIRS}") 
 	message (STATUS "Libraries: ${KAFKA_LIBRARIES}") 
 endif ()

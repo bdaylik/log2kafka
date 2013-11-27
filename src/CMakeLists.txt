@@ -24,5 +24,47 @@ set (MODULE_SOURCE_FILES
 )
 
 configure_file (${CMAKE_PROJECT_NAME}.hh.in ${CMAKE_CURRENT_SOURCE_DIR}/${CMAKE_PROJECT_NAME}.hh)
+
 add_executable (${CMAKE_PROJECT_NAME} ${MODULE_SOURCE_FILES})
+
 target_link_libraries (${CMAKE_PROJECT_NAME} ${LIBS})
+
+install (TARGETS ${CMAKE_PROJECT_NAME}
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+)
+
+file (GLOB schemas "${CMAKE_CURRENT_SOURCE_DIR}/schemas/*.json")
+
+install(
+    FILES
+        log4cxx.properties
+        ${schemas}
+    DESTINATION
+        /etc/${CMAKE_PROJECT_NAME}
+)
+
+file (GLOB avro-lib "${AVRO_LIBRARY_DIR}/${AVRO_LIBRARY_NAME}.*")
+file (GLOB kafka-lib "${KAFKA_LIBRARY_DIR}/${KAFKA_LIBRARY_NAME}.*")
+file (GLOB log4cxx-lib "${LOG4CXX_LIBRARY_DIR}/${LOG4CXX_LIBRARY_NAME}.*")
+file (GLOB snappy-lib "${SNAPPY_LIBRARY_DIR}/${SNAPPY_LIBRARY_NAME}.*")
+
+install(
+    FILES
+        ${avro-lib}
+        ${kafka-lib}
+        ${log4cxx-lib}
+        ${snappy-lib}
+    DESTINATION
+        ${CMAKE_PREFIX_PATH}/lib
+)                      
+
+install(
+    DIRECTORY
+        ${AVRO_INCLUDE_DIRS}
+        ${KAFKA_INCLUDE_DIRS}
+        ${LOG4CXX_INCLUDE_DIRS}
+        ${SNAPPY_INCLUDE_DIRS}
+    DESTINATION
+        ${CMAKE_PREFIX_PATH}/include
+)

@@ -1,20 +1,17 @@
 #
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
+# Copyright 2013 Produban
 #
-#   http://www.apache.org/licenses/LICENSE-2.0
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 #
 # Tries to find Snappy headers and libraries.
 #
@@ -42,7 +39,7 @@ find_path(SNAPPY_INCLUDE_DIR
         ${SNAPPY_ROOT_DIR}/include
 )
 
-find_library(SNAPPY_LIBRARIES
+find_library(SNAPPY_LIBRARY
     NAMES 
         snappy
     HINTS 
@@ -50,21 +47,22 @@ find_library(SNAPPY_LIBRARIES
 )
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(Snappy DEFAULT_MSG
-    SNAPPY_LIBRARIES
+find_package_handle_standard_args(Snappy 
+    DEFAULT_MSG
+    SNAPPY_LIBRARY
     SNAPPY_INCLUDE_DIR)
-
-set(SNAPPY_INCLUDE_DIRS ${SNAPPY_INCLUDE_DIR})
 	
-mark_as_advanced(
-    SNAPPY_ROOT_DIR
-    SNAPPY_LIBRARIES
-    SNAPPY_INCLUDE_DIR)
+mark_as_advanced(SNAPPY_LIBRARY SNAPPY_INCLUDE_DIR)
     
-if (AVRO_FOUND)
-    set(AVRO_LIBRARIES ${AVRO_LIBRARY})
-    set(AVRO_INCLUDE_DIRS ${AVRO_INCLUDE_DIR})
+if (SNAPPY_FOUND)
+    set(SNAPPY_LIBRARIES ${SNAPPY_LIBRARY})
+    set(SNAPPY_INCLUDE_DIRS ${SNAPPY_INCLUDE_DIR})
+    
+    get_filename_component(SNAPPY_LIBRARY_DIR ${SNAPPY_LIBRARY} PATH)
+    get_filename_component(SNAPPY_LIBRARY_NAME ${SNAPPY_LIBRARY} NAME_WE)
+    
+    mark_as_advanced(SNAPPY_LIBRARY_DIR SNAPPY_LIBRARY_NAME)
 	
-	message (STATUS "Include directories: ${AVRO_INCLUDE_DIRS}") 
-	message (STATUS "Libraries: ${AVRO_LIBRARIES}") 
+	message (STATUS "Include directories: ${SNAPPY_INCLUDE_DIRS}") 
+	message (STATUS "Libraries: ${SNAPPY_LIBRARIES}") 
 endif ()
