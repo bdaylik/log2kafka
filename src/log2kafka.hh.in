@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2013 Produban
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#pragma once
+ 
 #ifndef _LOG2KAFKA_HH_
 #define _LOG2KAFKA_HH_
 
@@ -31,8 +33,6 @@
 
 #include <boost/program_options.hpp>
 
-#include <libkafka/Client.h>
-
 #include <log4cxx/logger.h>
 #include <log4cxx/basicconfigurator.h>
 #include <log4cxx/propertyconfigurator.h>
@@ -40,6 +40,5 @@
 
 #include "ClientProxy.hh"
 #include "Constants.hh"
-#include "Serializer.hh"
 
 #endif /* _LOG2KAFKA_HH_ */

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2013 Produban
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,19 +14,45 @@
  * limitations under the License.
  */
 
+#pragma once
+
 #ifndef _LOG2KAFKA_CONSTANTS_HH_
 #define _LOG2KAFKA_CONSTANTS_HH_
 
 #include <string>
 
+/**
+ * Global constants class.
+ */
 class Constants {
 public:
+    /**
+     * Default Client ID value: Log2Kafka Producer
+     */
     static const std::string DEFAULT_CLIENT_ID;
-    static const std::string DEFAULT_HOST;
-    static const std::size_t DEFAULT_PORT;
-    static const std::string DEFAULT_TOPIC;
-    static const std::string DEFAULT_SCHEMA;
+
+    /**
+     * Default schema path: /etc/log2kafka
+     *
+     * Used if a relative value is given through the corresponding command
+     * line argument.
+     */
     static const std::string DEFAULT_SCHEMA_PATH;
+
+    /**
+     * Default message key: L2K
+     */
+    static const std::string DEFAULT_MESSAGE_KEY;
+
+    /**
+     * Default required acknowledgement mode: 1
+     */
+    static const int DEFAULT_REQUIRED_ACKS;
+
+    /**
+     * Default acknowledgement timeout: 2000 ms
+     */
+    static const int DEFAULT_TIMEOUT_ACKS;
 };
 
 #endif /* _LOG2KAFKA_CONSTANTS_HH_ */

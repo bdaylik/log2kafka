@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2013 Produban
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,7 +27,7 @@ LoggerPtr logger(Logger::getLogger(BUILD_NAME));
 
 /* Forward function declaration */
 
-void sendMessage(const po::variables_map& vm, const string& entry);
+inline void validateArguments(const po::variables_map& vm);
 inline void debugArguments(const po::variables_map& vm);
 
 /**
@@ -40,18 +40,23 @@ int main(int argc, char** argv) {
     po::options_description description("Allowed options");
     description.add_options()
     ("help,?", "produce help message")
-    ("version", "display version number")
     ("client,c", po::value<std::string>()->default_value(Constants::DEFAULT_CLIENT_ID),
             "producer client name/id")
-    ("host,h", po::value<std::string>()->default_value(Constants::DEFAULT_HOST), "hostname/ip")
-    ("port,p", po::value<std::size_t>()->default_value(Constants::DEFAULT_PORT), "connection port")
-    ("log,l", po::value<std::string>(), "log4cxx configuration file path")
+    ("host,h", po::value<std::string>(), "broker hostname/ip")
+    ("port,p", po::value<int>(), "broker port number")
+    ("log-config,l", po::value<std::string>(), "log4cxx configuration file path")
     ("schema,s", po::value<std::string>(),
-            "avro schema name to use for serialization - if not indicated then the raw entry will be sent")
-    ("topic,t", po::value<std::string>()->default_value(""), "kafka topic")
-    ("schema-path", po::value<std::string>()->default_value(Constants::DEFAULT_SCHEMA_PATH),
-            "path to look for schema definitions")
-    ("message,m", po::value<std::string>(), "message to send - if not indicated then standard input is used");
+            "avro definitition file to use for serialization - if omitted the raw entry will be sent")
+    ("topic,t", po::value<std::string>(), "target topic in the form <topic_name>[:<partition>]")
+    ("key,k", po::value<string>()->default_value(Constants::DEFAULT_MESSAGE_KEY), "kafka message key to use")
+    ("required-acks", po::value<int>()->default_value(Constants::DEFAULT_REQUIRED_ACKS),
+            "required acknowledged mode")
+    ("timeout-acks", po::value<int>()->default_value(Constants::DEFAULT_TIMEOUT_ACKS),
+            "required acknowledged timeout in milliseconds")
+    ("message,m", po::value<std::string>(), "message to send - if not indicated then standard input is used")
+    ("version", "display version number");
+
+    // TODO: make partition selection optional and ramdomly calculated
 
     po::variables_map vm;
 
@@ -59,7 +64,19 @@ int main(int argc, char** argv) {
 
     try {
         po::store(po::parse_command_line(argc, argv, description), vm);
+
+        if (vm.count("help")) {
+            cout << description;
+            return result;
+        }
+        else if (vm.count("version")) {
+            cout << BUILD_NAME << " " << log2kafka_VERSION << std::endl;
+            return result;
+        }
+
         po::notify(vm);
+
+        validateArguments(vm);
     }
     catch (exception& e) {
         cerr << "ERROR: " << e.what() << endl;
@@ -68,17 +85,19 @@ int main(int argc, char** argv) {
 
     /* Configure logger */
 
-    if (vm.count("log")) {
-        File logconfig(vm["log"].as<string>());
+    if (vm.count("log-config")) {
+        File logconfig(vm["log-config"].as<string>());
         PropertyConfigurator::configure(logconfig);
     }
 
-    if (logger->getAllAppenders().size() == 0) {
+    LoggerPtr rootLooger = Logger::getRootLogger();
 
-        // No appenders configured. Default to Console with WARN level
+    if (rootLooger->getAllAppenders().size() == 0) {
+
+        // No appenders configured. Default to console with WARN level
 
         BasicConfigurator::configure();
-        logger->setLevel(Level::getWarn());
+        rootLooger->setLevel(Level::getWarn());
     }
 
     if (LOG4CXX_UNLIKELY(logger->isDebugEnabled())) {
@@ -87,95 +106,87 @@ int main(int argc, char** argv) {
 
     /* Select action course route */
 
-    if (vm.count("help")) {
-        cout << description;
-    }
-    else if (vm.count("version")) {
-        cout << BUILD_NAME << " " << log2kafka_VERSION << std::endl;
-    }
-    else {
-        try {
-            string entry;
+    try {
 
-            /* Retrieve message to serialize */
+        /* Prepare client connection proxy */
 
-            if (vm.count("message")) {
-                entry = vm["message"].as<string>();
-                sendMessage(vm, entry);
+        auto proxy = unique_ptr<ClientProxy>(new ClientProxy());
+
+        proxy->clientId(vm["client"].as<string>());
+        proxy->messageKey(vm["key"].as<string>());
+        proxy->host(vm["host"].as<string>());
+        proxy->port(vm["port"].as<int>());
+        proxy->topic(vm["topic"].as<string>());
+        proxy->requiredAcks(vm["required-acks"].as<int>());
+        proxy->timeoutAcks(vm["timeout-acks"].as<int>());
+
+        if (vm.count("schema")) {
+            LOG4CXX_DEBUG(logger, "Schema defined. Using AVRO serialization mode");
+            proxy->serializer(vm["schema"].as<string>());
+        }
+
+        /* Retrieve message to serialize */
+
+        string entry;
+
+        if (vm.count("message")) {
+            entry = vm["message"].as<string>();
+            proxy->sendMessage(entry);
+        }
+        else { // read from standard input
+            LOG4CXX_DEBUG(logger, "Read from standard input");
+
+            /* Read a buffer's worth of log file data, exiting on errors */
+
+            string line;
+
+            for (;;) {
+                getline(cin, line);
+
+                if (cin.fail()) break;
+
+                proxy->sendMessage(line);
             }
-            else { // read from standard input
-                LOG4CXX_DEBUG(logger, "Read from standard input");
-
-                /* Read a buffer's worth of log file data, exiting on errors */
-
-                string line;
-
-                for (;;) {
-                    getline(cin, line);
-
-                    if (cin.fail()) break;
-
-                    sendMessage(vm, line);
-                }
-            }
         }
-        catch (exception& e) {
-            cerr << "Unexpected exception: " << e.what() << endl;
-            LOG4CXX_ERROR(logger, "Unexpected exception: " << e.what());
-            result = EXIT_FAILURE;
-        }
-        catch (...) {
-            cerr << "Unexpected exception." << endl;
-            LOG4CXX_ERROR(logger, "Unexpected exception ");
-            result = EXIT_FAILURE;
-        }
+    }
+    catch (exception& e) {
+        cerr << "Unexpected exception: " << e.what() << endl;
+        LOG4CXX_ERROR(logger, "Unexpected exception: " << e.what());
+        result = EXIT_FAILURE;
+    }
+    catch (...) {
+        cerr << "Unexpected exception." << endl;
+        LOG4CXX_ERROR(logger, "Unexpected exception ");
+        result = EXIT_FAILURE;
     }
 
     return result;
 }
 
-void sendMessage(const po::variables_map& vm, const string& entry) {
+inline void validateArguments(const po::variables_map& vm) {
 
-    LOG4CXX_DEBUG(logger, "Message: " << entry);
-
-    if (entry.length() == 0) {
-        LOG4CXX_WARN(logger, "Empty message entry discarded");
+    if (!vm.count("host")) {
+        throw invalid_argument("'host' argument was not set.");
     }
-    else {
 
-        ClientProxy proxy(vm["host"].as<string>(), vm["port"].as<size_t>(), vm["topic"].as<string>());
-        string message(entry);
+    if (!vm.count("port")) {
+        throw invalid_argument("'port' argument was not set.");
+    }
 
-        if (vm["schema"].as<string>() == "") { // No schema. Send raw entry.
-            LOG4CXX_DEBUG(logger, "No schema defined. Using raw mode");
-        }
-        else { // Serialize entry
-            LOG4CXX_DEBUG(logger, "Schema defined. Using serialization mode");
-
-            Serializer serializer(
-                    vm["schema-path"].as<string>() + "/" + vm["schema"].as<string>() + ".json");
-
-            try {
-                message = serializer.serialize(entry);
-            }
-            catch (exception& e) {
-                LOG4CXX_ERROR(logger, "Using raw mode due to unexpected exception: " << e.what());
-            }
-        }
-
-        LOG4CXX_DEBUG(logger, "Message to be sent: " << message);
-
-        proxy.sendMessage(message);
+    if (!vm.count("schema")) {
+        throw invalid_argument("'schema' argument was not set.");
     }
 }
 
 inline void debugArguments(const po::variables_map& vm) {
     LOG4CXX_DEBUG(logger, "Arguments:"
             << "\n\tclient: " << vm["client"].as<string>()
+            << "\n\tkey: " << vm["key"].as<string>()
             << "\n\thost: " << vm["host"].as<string>()
-            << "\n\tport: " << vm["port"].as<size_t>()
-            << "\n\ttopic: " << (vm.count("topic") ? vm["topic"].as<string>() : "")
+            << "\n\tport: " << vm["port"].as<int>()
+            << "\n\ttopic: " << vm["topic"].as<string>()
             << "\n\tschema: " << (vm.count("schema") ? vm["schema"].as<string>() : "")
-            << "\n\tschema-path: " << vm["schema-path"].as<string>()
-            << "\n\tlog: " << (vm.count("log") ? vm["log"].as<string>() : ""));
+            << "\n\trequired-acks: " << vm["required-acks"].as<int>()
+            << "\n\ttimeout-acks: " << vm["timeout-acks"].as<int>()
+            << "\n\tlog-config: " << (vm.count("log-config") ? vm["log-config"].as<string>() : ""));
 }
