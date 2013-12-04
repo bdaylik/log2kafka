@@ -107,26 +107,6 @@
 			<resource resourceType="PROJECT" workspacePath="/kafka-log-sender"/>
 		</configuration>
 	</storageModule>
-	<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets">
-		<buildTargets>
-			<target name="cygwin-debug" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
-				<buildCommand>cmake</buildCommand>
-				<buildArguments>-E chdir build/cygwin/ cmake -G "Unix Makefiles" ../../ -DCMAKE_BUILD_TYPE:STRING=Debug</buildArguments>
-				<buildTarget/>
-				<stopOnError>true</stopOnError>
-				<useDefaultCommand>false</useDefaultCommand>
-				<runAllBuilders>true</runAllBuilders>
-			</target>
-			<target name="linux-debug" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
-				<buildCommand>cmake</buildCommand>
-				<buildArguments>-E chdir build/linux/ cmake -G "Unix Makefiles" ../../ -DCMAKE_BUILD_TYPE:STRING=Debug</buildArguments>
-				<buildTarget/>
-				<stopOnError>true</stopOnError>
-				<useDefaultCommand>false</useDefaultCommand>
-				<runAllBuilders>true</runAllBuilders>
-			</target>
-		</buildTargets>
-	</storageModule>
 	<storageModule moduleId="scannerConfiguration">
 		<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
 		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.cygwin.exe.debug.974822887;cdt.managedbuild.config.gnu.cygwin.exe.debug.974822887.;cdt.managedbuild.tool.gnu.c.compiler.cygwin.exe.debug.1370490284;cdt.managedbuild.tool.gnu.c.compiler.input.cygwin.1300847388">
