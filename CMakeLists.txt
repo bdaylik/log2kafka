@@ -141,9 +141,54 @@ set (LIBS
 )
 
 include (InstallRequiredSystemLibraries)
+add_subdirectory (src)
 
+#
+# Documentation settings
+#
 
+option (BUILD_DOC "Create and install the HTML based API documentation (requires Doxygen)" OFF)
+
+if (BUILD_DOC)
+
+    message ("\nConfigure documentation generation")
+ 
+    find_package(Doxygen)
+  
+    if (NOT DOXYGEN_FOUND)
+        message (FATAL_ERROR "Doxygen is needed to build the documentation.")
+    endif ()
+ 
+    set (DOXYFILE_IN          ${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile.in    )
+    set (DOXYFILE             ${PROJECT_BINARY_DIR}/Doxyfile             )
+    set (DOXY_HTML_INDEX_FILE ${CMAKE_CURRENT_BINARY_DIR}/html/index.html)
+    set (DOXY_OUTPUT_ROOT     ${CMAKE_CURRENT_BINARY_DIR}                ) # Pasted into Doxyfile.in
+    set (DOXY_INPUT           ${PROJECT_SOURCE_DIR}/src                  ) # Pasted into Doxyfile.in
+    set (DOXY_EXTRA_FILES     ${CMAKE_CURRENT_SOURCE_DIR}/mainpage.dox   ) # Pasted into Doxyfile.in
+ 
+    configure_file (${DOXYFILE_IN} ${DOXYFILE} @ONLY)
+ 
+    add_custom_command (OUTPUT ${DOXY_HTML_INDEX_FILE}
+        COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYFILE}
+        # The following should be ${DOXYFILE} only but it
+        # will break the dependency.
+        # The optimal solution would be creating a 
+        # custom_command for ${DOXYFILE} generation
+        # but I still have to figure out how...
+        MAIN_DEPENDENCY ${DOXYFILE} ${DOXYFILE_IN}
+        DEPENDS ${CMAKE_PROJECT_NAME} # ${DOXY_EXTRA_FILES}
+        COMMENT "Generating HTML documentation")
+ 
+    add_custom_target (doc ALL DEPENDS ${DOXY_HTML_INDEX_FILE})
+ 
+    install (DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/html DESTINATION share/doc )
+endif ()
+
+#
 # Package settings
+#
+
+message ("\nConfigure packaging")
 
 set (CPACK_SET_DESTDIR ON)
 set (CPACK_INCLUDE_TOPLEVEL_DIRECTORY OFF)
@@ -183,4 +228,3 @@ set (CPACK_PACKAGE_EXECUTABLES "${CMAKE_PROJECT_NAME}" "${CMAKE_PROJECT_NAME}")
 
 include (CPack)
 
-add_subdirectory (src)
