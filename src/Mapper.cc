@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2013 Produban
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,21 +20,19 @@ using namespace std;
 using namespace boost::xpressive;
 using namespace log4cxx;
 
+/* Static fields */
+
 LoggerPtr Mapper::logger(Logger::getLogger("Mapper"));
 
-Mapper::Mapper() {
-    // Empty constructor
-}
+/* methods */
 
-Mapper::Mapper(string pattern) :
-        _pattern(pattern) {
+Mapper::Mapper() {
 }
 
 Mapper::~Mapper() {
-    // Empty virtual destructor
 }
 
-void Mapper::pattern(string pattern) {
+void Mapper::pattern(std::string pattern) {
     this->_pattern = pattern;
 }
 
@@ -44,13 +42,13 @@ const string& Mapper::pattern() const {
 
 void Mapper::map(avro::GenericDatum& datum, const string& entry) {
 
-    if (this->_regex.regex_id() == 0) {
-        this->_regex = sregex::compile(_pattern);
+    if (_regex.regex_id() == 0) {
+        _regex = sregex::compile(_pattern);
     }
 
     smatch what;
 
-    if (regex_match(entry, what, this->_regex)) {
+    if (regex_match(entry, what, _regex)) {
 
         LOG4CXX_DEBUG(logger, "Valid entry detected: " << what[0].str());
 
@@ -96,7 +94,7 @@ void Mapper::map(avro::GenericDatum& datum, const string& entry) {
                     break;
 
                 case avro::Type::AVRO_STRING:
-                default:
+                    default:
                     record.setFieldAt(i, avro::GenericDatum(ss.str()));
                 }
 

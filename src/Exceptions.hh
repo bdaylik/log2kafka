@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2013 Produban
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,11 +14,17 @@
  * limitations under the License.
  */
 
+#pragma once
+
 #ifndef _LOG2KAFKA_EXCEPTION_HH_
 #define _LOG2KAFKA_EXCEPTION_HH_
 
 #include <exception>
 
+/**
+ * Indicate a mismatch between an received entry and the schema mapper
+ * selected to procees it.
+ */
 class MapperMatchException: public std::exception {
     virtual const char* what() const throw ();
 };
