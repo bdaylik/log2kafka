@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2013 Produban
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#pragma once
+
 #ifndef _LOG2KAFKA_CLIENT_PROXY_HH_
 #define _LOG2KAFKA_CLIENT_PROXY_HH_
 
@@ -22,48 +24,177 @@
 #include <ctime>
 #include <functional>
 #include <iomanip>
+#include <memory>
+#include <unordered_map>
 #include <vector>
+
+#include <boost/lexical_cast.hpp>
 
 #include <libkafka/Client.h>
 #include <log4cxx/logger.h>
 
 #include "Constants.hh"
+#include "Serializer.hh"
 
 namespace kafka = LibKafka;
 
+typedef std::unordered_map<std::string, int> topicmap;
+
+/**
+ * Proxy client connection class.
+ */
 class ClientProxy {
 public:
 
-    std::string clientId;
-    std::string host;
-    std::size_t port;
-    int requiredAcks;
-    int timeout;
-
-    std::vector<std::string> topics;
-
     ClientProxy();
-
-    ClientProxy(const std::string& host, std::size_t port, const std::string& topic);
-
     virtual ~ClientProxy();
 
-    kafka::Message* createMessage(const std::string& message);
+    /**
+     * Set the Client ID.
+     */
+    void clientId(std::string clientId);
 
-    kafka::ProduceMessageSet* createMessageSet(const std::string& message);
+    /**
+     * Set the message key.
+     */
+    void messageKey(std::string messageKey);
 
-    kafka::TopicNameBlock<kafka::ProduceMessageSet>* createRequestTopicNameBlock(const std::string& topic,
-            const std::string& message);
+    /**
+     * Set the hostname/ip.
+     */
+    void host(std::string host);
 
-    kafka::ProduceRequest* createProduceRequest(const std::string& message);
+    /**
+     * Set the host port.
+     */
+    void port(int port);
 
+    /**
+     * Set the topic and possibly the partition.
+     *
+     * The format expected of the string is &lt;topic_name&gt;[:&lt;partition&gt;].
+     * Where a random partition will be selected if omitted.
+     */
+    void topic(std::string topic);
+
+    /**
+     * Set the required acknowledment mode. (Default: 1)
+     *
+     * Typical values are:
+     *
+     * 0 = never waits for an acknowledgement from the broker
+     *
+     * 1 = gets an acknowledgement after the leader replica has received the data
+     *
+     * -1 = gets an acknowledgement after all in-sync replicas have received the data
+     */
+    void requiredAcks(int requiredAcks);
+
+    /**
+     * Set the amount of time in milliseconds the broker will wait trying to
+     * meet the required acknowledgement requirement.
+     */
+    void timeoutAcks(int timeoutAcks);
+
+    /**
+     * Configure an AVRO serializer instance according to the specified
+     * configuration file.
+     *
+     * @param configFile the file path to the schema configuration and mapping
+     */
+    void serializer(const std::string& configFile);
+
+    /**
+     * Send a message to kafka.
+     *
+     * @param message the message to be sent
+     */
     void sendMessage(const std::string& message);
 
 private:
+
+    /**
+     * Class logger.
+     */
     static log4cxx::LoggerPtr logger;
 
+    /**
+     * Client identification.
+     *
+     * A user-specified string sent in each request to help trace calls. It
+     * should logically identify the application making the request.
+     */
+    std::string _clientId;
+
+    /**
+     * Kafka messake key.
+     */
+    std::string _messageKey;
+
+    /**
+     * Broker hostname/ip.
+     */
+    std::string _host;
+
+    /**
+     * Broker port number.
+     */
+    int _port;
+
+    /**
+     * This value controls when a produce request is considered completed.
+     * (Default: 1)
+     *
+     * Specifically, how many other brokers must have committed the data to
+     * their log and acknowledged this to the leader.
+     *
+     * Typical values are:
+     *
+     * 0 = never waits for an acknowledgement from the broker
+     *
+     * 1 = gets an acknowledgement after the leader replica has received the data
+     *
+     * -1 = gets an acknowledgement after all in-sync replicas have received the data
+     */
+    int _requiredAcks;
+
+    /**
+     * The amount of time in milliseconds the broker will wait trying to meet
+     * the required acks requirement before sending back an error to the client.\
+     * (Default: 2000)
+     */
+    int _timeoutAcks;
+
+    /**
+     * List of topics.
+     */
+    topicmap _topics;
+
+    /**
+     * Serializer object to use.
+     */
+    std::unique_ptr<Serializer> _serializer;
+
+    /**
+     * Initialize members with default values.
+     *
+     * @see Constants
+     */
     void initDefaults();
-    int getCorrelationId();
+
+    /**
+     * Generate an unique correlation id for a request.
+     */
+    int generateCorrelationId();
+
+    kafka::Message* createMessage(const std::vector<uint8_t>& message);
+
+    kafka::ProduceMessageSet* createMessageSet(int partition, const std::vector<uint8_t>& message);
+
+    kafka::TopicNameBlock<kafka::ProduceMessageSet>* createRequestTopicNameBlock(const std::string& topic,
+            int partition, const std::vector<uint8_t>& message);
+
+    kafka::ProduceRequest* createProduceRequest(const std::vector<uint8_t>& message);
 };
 
 #endif /* _LOG2KAFKA_CLIENT_PROXY_HH_ */
