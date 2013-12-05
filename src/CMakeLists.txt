@@ -17,6 +17,7 @@
 set (MODULE_SOURCE_FILES
     ${CMAKE_PROJECT_NAME}.cc
     Constants.cc
+    InvalidMapperException.cc
     Mapper.cc
     MapperMatchException.cc
     ClientProxy.cc
@@ -34,11 +35,10 @@ install (TARGETS ${CMAKE_PROJECT_NAME}
     LIBRARY DESTINATION lib
 )
 
-file (GLOB schemas "${CMAKE_CURRENT_SOURCE_DIR}/schemas/*.json")
+file (GLOB schemas "${CMAKE_CURRENT_SOURCE_DIR}/conf/*")
 
 install(
     FILES
-        log4cxx.properties
         ${schemas}
     DESTINATION
         /etc/${CMAKE_PROJECT_NAME}
