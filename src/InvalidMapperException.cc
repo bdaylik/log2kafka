@@ -14,28 +14,9 @@
  * limitations under the License.
  */
 
-#pragma once
+#include "Exceptions.hh"
 
-#ifndef _LOG2KAFKA_EXCEPTION_HH_
-#define _LOG2KAFKA_EXCEPTION_HH_
+const char* InvalidMapperException::what() const throw () {
+    return "The mapper does not define a regular expression pattern";
+}
 
-#include <exception>
-
-/**
- * Indicate an invalid mapper, one without a regular expression pattern
- * defined.
- */
-class InvalidMapperException: public std::exception {
-    virtual const char* what() const throw ();
-};
-
-
-/**
- * Indicate a mismatch between an received entry and the schema mapper
- * selected to procees it.
- */
-class MapperMatchException: public std::exception {
-    virtual const char* what() const throw ();
-};
-
-#endif /* _LOG2KAFKA_EXCEPTION_HH_ */
