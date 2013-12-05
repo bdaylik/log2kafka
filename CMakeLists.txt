@@ -33,19 +33,6 @@ if (WIN32 AND NOT CYGWIN AND NOT MSYS)
         -DBOOST_ALL_NO_LIB)
 endif ()
 
-# Compiler-specific C++11 activation.
-#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
-#    execute_process(
-#        COMMAND ${CMAKE_CXX_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
-#    if (NOT (GCC_VERSION VERSION_GREATER 4.7 OR GCC_VERSION VERSION_EQUAL 4.7))
-#        message(FATAL_ERROR "${PROJECT_NAME} requires g++ 4.7 or greater.")
-#    endif ()
-#elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
-#    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
-#else ()
-#    message(FATAL_ERROR "Your C++ compiler does not support C++11.")
-#endif ()
-
 # GCC specifics
 if (CMAKE_COMPILER_IS_GNUCXX)
     set (CMAKE_CXX_FLAGS                "${CMAKE_CXX_FLAGS} -Wall -std=c++0x")
