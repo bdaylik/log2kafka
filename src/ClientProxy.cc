@@ -31,19 +31,19 @@ ClientProxy::~ClientProxy() {
 }
 
 void ClientProxy::clientId(std::string clientId) {
-    this->_clientId = clientId;
+    this->clientId_ = clientId;
 }
 
 void ClientProxy::messageKey(std::string messageKey) {
-    this->_messageKey = messageKey;
+    this->messageKey_ = messageKey;
 }
 
 void ClientProxy::host(std::string host) {
-    this->_host = host;
+    this->host_ = host;
 }
 
 void ClientProxy::port(int port) {
-    this->_port = port;
+    this->port_ = port;
 }
 
 void ClientProxy::topic(std::string topic) {
@@ -63,100 +63,116 @@ void ClientProxy::topic(std::string topic) {
         }
     }
 
-    this->_topics.insert(make_pair(fields[0], partition));
+    this->topics_.insert(make_pair(fields[0], partition));
 }
 
 void ClientProxy::requiredAcks(int requiredAcks) {
-    this->_requiredAcks = requiredAcks;
+    this->requiredAcks_ = requiredAcks;
 }
 
 void ClientProxy::timeoutAcks(int timeoutAcks) {
-    this->_timeoutAcks = timeoutAcks;
+    this->timeoutAcks_ = timeoutAcks;
 }
 
 void ClientProxy::serializer(const string& configFile) {
     unique_ptr<Serializer> serializer(new Serializer(configFile));
-    this->_serializer = move(serializer);
+    this->serializer_ = move(serializer);
 }
 
 void ClientProxy::initDefaults() {
-    this->_clientId = Constants::DEFAULT_CLIENT_ID;
-    this->_requiredAcks = Constants::DEFAULT_REQUIRED_ACKS;
-    this->_timeoutAcks = Constants::DEFAULT_TIMEOUT_ACKS;
+    this->clientId_ = Constants::DEFAULT_CLIENT_ID;
+    this->requiredAcks_ = Constants::DEFAULT_REQUIRED_ACKS;
+    this->timeoutAcks_ = Constants::DEFAULT_TIMEOUT_ACKS;
 }
 
-kafka::Message* ClientProxy::createMessage(const std::vector<uint8_t>& message) {
+kafka::Message* ClientProxy::createMessage(const auto_ptr<avro::OutputStream>& data) {
 
     int crc = 0;
     int offset = -1;
     signed char magicByte = 1;
     signed char attributes = 0; // last three bits must be zero to disable gzip compression
 
-    int keyLength = this->_messageKey.length();
-    int valueLength = message.size();
+    // Copy message key
 
+    int keyLength = this->messageKey_.length();
     uint8_t* key = new uint8_t[keyLength];
-    memcpy(key, this->_messageKey.data(), keyLength);
 
-    uint8_t* value = new uint8_t[valueLength + 1];
-    copy(message.begin(), message.end(), value);
-    value[valueLength] = '\0';
+    memcpy(key, this->messageKey_.data(), keyLength);
+
+    // Copy message value
+
+    uint64_t valueLength = data->byteCount();
+    uint8_t* value = new uint8_t[valueLength];
+
+    auto_ptr<avro::InputStream> dataInput = avro::memoryInputStream(*data);
+    avro::StreamReader reader(*dataInput);
+    reader.readBytes(value, valueLength);
+
+    if (LOG4CXX_UNLIKELY(logger->isDebugEnabled())) {
+        LOG4CXX_DEBUG(logger, "Message to be sent:");
+        LOG4CXX_DEBUG(logger, "MESSAGE BEGIN");
+        cout.write(reinterpret_cast<const char*>(value), valueLength);
+        cout << endl;
+        LOG4CXX_DEBUG(logger, "MESSAGE END");
+    }
 
     //memcpy(value, message.data(), valueLength);
 
-    return new kafka::Message(crc, magicByte, attributes, keyLength, key, valueLength, value, offset, true);
+    return new kafka::Message(crc, magicByte, attributes, keyLength, key, valueLength, value, offset);
 }
 
-kafka::ProduceMessageSet* ClientProxy::createMessageSet(int partition, const std::vector<uint8_t>& message) {
+kafka::ProduceMessageSet* ClientProxy::createMessageSet(int partition,
+        const auto_ptr<avro::OutputStream>& data) {
 
     vector<kafka::Message*> messages;
 
-    kafka::Message *kafkaMessage = createMessage(message);
+    kafka::Message *kafkaMessage = createMessage(data);
     messages.push_back(kafkaMessage);
 
     // sizeof(offset) + sizeof(messageSize) + messageSize
     int messageSetSize = sizeof(long int) + sizeof(int) + kafkaMessage->getWireFormatSize(false);
-    kafka::MessageSet* messageSet = new kafka::MessageSet(messageSetSize, messages, true);
+
+    kafka::MessageSet* messageSet = new kafka::MessageSet(messageSetSize, messages);
     messageSetSize = messageSet->getWireFormatSize(false);
 
-    return new kafka::ProduceMessageSet(partition, messageSetSize, messageSet, true);
+    return new kafka::ProduceMessageSet(partition, messageSetSize, messageSet);
 }
 
 kafka::TopicNameBlock<kafka::ProduceMessageSet>* ClientProxy::createRequestTopicNameBlock(const string& topic,
-        int partition, const std::vector<uint8_t>& message) {
+        int partition, const auto_ptr<avro::OutputStream>& data) {
 
     int numMessages = 1;
 
     kafka::ProduceMessageSet** messageSetArray = new kafka::ProduceMessageSet*[numMessages];
-    messageSetArray[0] = createMessageSet(partition, message);
+    messageSetArray[0] = createMessageSet(partition, data);
 
-    return new kafka::TopicNameBlock<kafka::ProduceMessageSet>(topic, numMessages, messageSetArray, true);
+    return new kafka::TopicNameBlock<kafka::ProduceMessageSet>(topic, numMessages, messageSetArray);
 }
 
-kafka::ProduceRequest* ClientProxy::createProduceRequest(const std::vector<uint8_t>& message) {
+kafka::ProduceRequest* ClientProxy::createProduceRequest(const auto_ptr<avro::OutputStream>& data) {
 
     int correlationId = generateCorrelationId();
-    vector<std::string>::size_type numTopics = this->_topics.size();
+    vector<std::string>::size_type numTopics = this->topics_.size();
 
     kafka::TopicNameBlock<kafka::ProduceMessageSet>** topicArray =
             new kafka::TopicNameBlock<kafka::ProduceMessageSet>*[numTopics];
 
     int i = 0;
 
-    for (topicmap::iterator it = this->_topics.begin(); it != this->_topics.end(); ++it) {
-        topicArray[i] = createRequestTopicNameBlock(it->first, it->second, message);
+    for (topicmap::iterator it = this->topics_.begin(); it != this->topics_.end(); ++it) {
+        topicArray[i] = createRequestTopicNameBlock(it->first, it->second, data);
         i++;
     }
 
-    return new kafka::ProduceRequest(correlationId, _clientId, _requiredAcks, _timeoutAcks, numTopics,
-            topicArray, true);
+    return new kafka::ProduceRequest(correlationId, clientId_, requiredAcks_, timeoutAcks_, numTopics,
+            topicArray, false);
 }
 
 void ClientProxy::sendMessage(const string& message) {
 
     LOG4CXX_DEBUG(logger, "Message: " << message);
 
-    std::vector<uint8_t> preparedMessage;
+    auto_ptr<avro::OutputStream> dataOutput = avro::memoryOutputStream();
 
     /* Prepare message */
 
@@ -165,51 +181,52 @@ void ClientProxy::sendMessage(const string& message) {
         return;
     }
 
-    if (_serializer) { // Use serialization mode
+    if (serializer_) { // Use serialization mode
         LOG4CXX_DEBUG(logger, "Schema defined. Using serialization mode");
 
         try {
-            _serializer->serialize(message, preparedMessage);
+            serializer_->serialize(message, dataOutput);
         }
         catch (exception& e) {
-            copy(message.begin(), message.end(), back_inserter(preparedMessage));
+            //copy(message.begin(), message.end(), back_inserter(preparedMessage));
             LOG4CXX_ERROR(logger, "Using raw mode due to unexpected exception: " << e.what());
         }
     }
     else { // Use raw mode
-        copy(message.begin(), message.end(), back_inserter(preparedMessage));
+           //copy(message.begin(), message.end(), back_inserter(preparedMessage));
         LOG4CXX_DEBUG(logger, "No schema defined. Using raw mode");
-    }
-
-    if (LOG4CXX_UNLIKELY(logger->isDebugEnabled())) {
-        LOG4CXX_DEBUG(logger, "Message to be sent:");
-        LOG4CXX_DEBUG(logger, "MESSAGE BEGIN");
-        cout.write(reinterpret_cast<const char*>(preparedMessage.data()), preparedMessage.size());
-        cout << endl;
-        LOG4CXX_DEBUG(logger, "MESSAGE END");
     }
 
     /* Send request */
 
-    kafka::ProduceRequest *pr1 = createProduceRequest(preparedMessage);
+    unique_ptr<kafka::ProduceRequest> pr1(createProduceRequest(dataOutput));
+    //kafka::ProduceRequest *pr1 = createProduceRequest(dataOutput);
 
-    if (pr1 != NULL) {
-        LOG4CXX_DEBUG(logger, "ProduceRequest:\n" << *pr1);
+    if (pr1) {
+        LOG4CXX_DEBUG(logger, "Request:\n" << pr1.get());
 
-        kafka::Client *c = new kafka::Client(_host, _port);
-        kafka::ProduceResponse *pr2 = c->sendProduceRequest(pr1);
-
-        if (pr2 != NULL) {
-            LOG4CXX_DEBUG(logger, "ProduceResponse:\n" << *pr2);
-
-            if (pr2->hasErrorCode()) {
-                LOG4CXX_DEBUG(logger, "Unexpected sendProduceRequest error");
-            }
-
-            //delete pr2;
+        if (!client_) {
+            client_.reset(new kafka::Client(host_, port_));
         }
 
-        //delete pr1;
+        unique_ptr<kafka::ProduceResponse> pr2(client_->sendProduceRequest(pr1.get()));
+        // kafka::ProduceResponse *pr2 = client_->sendProduceRequest(pr1);
+
+        if (pr2) {
+            LOG4CXX_DEBUG(logger, "Response received");
+            LOG4CXX_DEBUG(logger, "Response detail:\n" << pr2.get());
+
+            if (pr2->hasErrorCode()) {
+                LOG4CXX_DEBUG(logger, "Unexpected sendProduceRequest error: " << pr2->hasErrorCode());
+            }
+
+            // delete pr2;
+        }
+        else {
+            LOG4CXX_DEBUG(logger, "Response is null");
+        }
+
+        // delete pr1;
     }
 }
 

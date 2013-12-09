@@ -124,22 +124,27 @@ private:
      * A user-specified string sent in each request to help trace calls. It
      * should logically identify the application making the request.
      */
-    std::string _clientId;
+    std::string clientId_;
 
     /**
      * Kafka messake key.
      */
-    std::string _messageKey;
+    std::string messageKey_;
 
     /**
      * Broker hostname/ip.
      */
-    std::string _host;
+    std::string host_;
+
+    /**
+     * Broker hostname/ip.
+     */
+    std::unique_ptr<kafka::Client> client_;
 
     /**
      * Broker port number.
      */
-    int _port;
+    int port_;
 
     /**
      * This value controls when a produce request is considered completed.
@@ -156,24 +161,24 @@ private:
      *
      * -1 = gets an acknowledgement after all in-sync replicas have received the data
      */
-    int _requiredAcks;
+    int requiredAcks_;
 
     /**
      * The amount of time in milliseconds the broker will wait trying to meet
      * the required acks requirement before sending back an error to the client.\
      * (Default: 2000)
      */
-    int _timeoutAcks;
+    int timeoutAcks_;
 
     /**
      * List of topics.
      */
-    topicmap _topics;
+    topicmap topics_;
 
     /**
      * Serializer object to use.
      */
-    std::unique_ptr<Serializer> _serializer;
+    std::unique_ptr<Serializer> serializer_;
 
     /**
      * Initialize members with default values.
@@ -187,14 +192,14 @@ private:
      */
     int generateCorrelationId();
 
-    kafka::Message* createMessage(const std::vector<uint8_t>& message);
+    kafka::Message* createMessage(const std::auto_ptr<avro::OutputStream>& data);
 
-    kafka::ProduceMessageSet* createMessageSet(int partition, const std::vector<uint8_t>& message);
+    kafka::ProduceMessageSet* createMessageSet(int partition, const std::auto_ptr<avro::OutputStream>& data);
 
     kafka::TopicNameBlock<kafka::ProduceMessageSet>* createRequestTopicNameBlock(const std::string& topic,
-            int partition, const std::vector<uint8_t>& message);
+            int partition, const std::auto_ptr<avro::OutputStream>& data);
 
-    kafka::ProduceRequest* createProduceRequest(const std::vector<uint8_t>& message);
+    kafka::ProduceRequest* createProduceRequest(const std::auto_ptr<avro::OutputStream>& data);
 };
 
 #endif /* _LOG2KAFKA_CLIENT_PROXY_HH_ */
