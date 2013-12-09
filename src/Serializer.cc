@@ -83,53 +83,29 @@ void Serializer::configure() {
     schemaFile.close();
 }
 
-void Serializer::serialize(const string& entry, vector<uint8_t>& data) {
+void Serializer::serialize(const string& entry, auto_ptr<avro::OutputStream>& data) {
 
     avro::GenericDatum datum(_mapper);
 
     if (_mapper.pattern() != "") {
 
         _mapper.map(datum, entry);
-
-        auto_ptr<avro::OutputStream> resultOutput = avro::memoryOutputStream();
-        auto_ptr<avro::OutputStream> dataOutput = avro::memoryOutputStream();
-
-        avro::EncoderPtr baseEncoder = avro::binaryEncoder();
-        avro::EncoderPtr validatingEncoder = avro::validatingEncoder(_mapper, baseEncoder);
-
         _sync = makeSync();
 
-        baseEncoder->init(*resultOutput);
+        avro::EncoderPtr baseEncoder = avro::binaryEncoder();
+        baseEncoder->init(*data);
+
         writeHeader(baseEncoder);
+        writeDataBlock(baseEncoder, datum, data->byteCount());
 
-        baseEncoder->init(*dataOutput);
-        avro::encode(*validatingEncoder, datum);
-        validatingEncoder->flush();
-
-        baseEncoder->init(*resultOutput);
-        avro::encode(*baseEncoder, 1);
-        int64_t byteCount = dataOutput->byteCount();
-        avro::encode(*baseEncoder, byteCount);
-        baseEncoder->flush();
-
-        auto_ptr<avro::InputStream> inraw = avro::memoryInputStream(*dataOutput);
-
-        copy(*inraw, *resultOutput);
-
-        baseEncoder->init(*resultOutput);
-        avro::encode(*baseEncoder, _sync);
-        baseEncoder->flush();
-
-        LOG4CXX_DEBUG(logger, "Result output size: " << resultOutput->byteCount());
-
-        auto_ptr<avro::InputStream> testRead = avro::memoryInputStream(*resultOutput);
-        avro::StreamReader reader(*testRead);
-
-        while (reader.hasMore()) {
-            data.push_back(reader.read());
-        }
+        LOG4CXX_DEBUG(logger, "Data buffer size: " << data->byteCount());
 
         if (LOG4CXX_UNLIKELY(logger->isTraceEnabled())) {
+
+            /* Persist to file */
+
+            auto_ptr<avro::InputStream> inraw = avro::memoryInputStream(*data);
+
             hash<std::string> hash_fn;
             time_t now = time(NULL);
 
@@ -138,25 +114,22 @@ void Serializer::serialize(const string& entry, vector<uint8_t>& data) {
             fileName << "/tmp/avro_" << hash_fn(ctime(&now)) << ".txt";
 
             std::auto_ptr<avro::OutputStream> fileStream = avro::fileOutputStream(fileName.str().data());
-            testRead->backup(resultOutput->byteCount());
 
-            copy(*testRead, *fileStream);
+            copy(*inraw, *fileStream);
+
             fileStream->flush();
             fileStream.release();
         }
-
-        LOG4CXX_DEBUG(logger, "Vector data size: " << data.size());
     }
-    else { // Invalid mapper or mapping pattern not loaded, change to raw mode
-        LOG4CXX_WARN(logger, "Invalid mapper or mapping pattern not loaded, changing to raw mode");
-        copy(entry.begin(), entry.end(), back_inserter(data));
+    else {
+        throw InvalidMapperException();
     }
 }
 
 void Serializer::loadMapper(istream &is) {
 
     if (!is.good()) {
-        LOG4CXX_WARN(logger, "Invalid schema file. Changing to raw serialization.");
+        LOG4CXX_WARN(logger, "Invalid schema file. Changing to raw serialization");
     }
 
     try {
@@ -225,12 +198,10 @@ void Serializer::setMetadata(const string& key, const string& value) {
     LOG4CXX_TRACE(logger, "Metadata key value set to: " << value);
 }
 
-boost::mt19937 random_generator(static_cast<uint32_t>(time(0)));
-
 static Magic magic = { { 'O', 'b', 'j', '\x01' } };
 
 void Serializer::writeHeader(avro::EncoderPtr& e) {
-    LOG4CXX_INFO(logger, "Write metadata header.");
+    LOG4CXX_INFO(logger, "Write header");
 
     avro::encode(*e, magic);
     avro::encode(*e, _metadata);
@@ -238,6 +209,33 @@ void Serializer::writeHeader(avro::EncoderPtr& e) {
 
     e->flush();
 }
+
+void Serializer::writeDataBlock(avro::EncoderPtr& e, const avro::GenericDatum& datum, int64_t byteCount) {
+    LOG4CXX_INFO(logger, "Write data block");
+
+    // A long indicating the count of objects in this block
+
+    int64_t objectCount = 1;
+    avro::encode(*e, objectCount);
+
+    // A long indicating the size in bytes of the serialized objects in the
+    // current block, after any codec is applied
+
+    avro::encode(*e, byteCount);
+
+    // The serialized objects. If a codec is specified, this is compressed by
+    // that codec.
+
+    avro::encode(*e, datum);
+
+    // The file's 16-byte sync marker
+
+    avro::encode(*e, _sync);
+
+    e->flush();
+}
+
+boost::mt19937 random_generator(static_cast<uint32_t>(time(0)));
 
 DataBlockSync Serializer::makeSync() {
     DataBlockSync sync;
