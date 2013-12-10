@@ -16,7 +16,10 @@
 
 mkdir -p build/release
 cd build/release
-cmake ../../ 
+
+CMAKE_OPTIONS="${CMAKE_OPTIONS} -DBUILD_DOC:BOOL=ON"
+
+cmake ../../ ${CMAKE_OPTIONS} 
 make
 
 if [ -n "$1" ]; then
