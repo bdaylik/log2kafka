@@ -108,11 +108,10 @@ find_package (Log4CXX REQUIRED)
 find_package (AvroCPP REQUIRED)
 find_package (KafkaC REQUIRED)
 
-#add_library(kafka STATIC IMPORTED)
-#set_property(TARGET kafka PROPERTY IMPORTED_LOCATION ${KAFKA_LIBRARIES})
+add_library(kafka STATIC IMPORTED)
+set_property(TARGET kafka PROPERTY IMPORTED_LOCATION ${KAFKA_LIBRARY_DIR}/librdkafka.a)
 
 include_directories (
-    ${KAFKA_INCLUDE_DIRS}
     ${AVRO_INCLUDE_DIRS}
     ${APR_INCLUDE_DIRS}
     ${LOG4CXX_INCLUDE_DIRS}
@@ -121,7 +120,7 @@ include_directories (
 
 set (LIBS
     ${LIBS}
-    ${KAFKA_LIBRARIES}
+    kafka
     ${AVRO_LIBRARIES}
     ${LOG4CXX_LIBRARIES}
     ${APR_LIBRARIES}
@@ -132,6 +131,27 @@ set (LIBS
 
 include (InstallRequiredSystemLibraries)
 add_subdirectory (src)
+
+file (GLOB avro-lib "${AVRO_LIBRARY_DIR}/${AVRO_LIBRARY_NAME}.*")
+file (GLOB log4cxx-lib "${LOG4CXX_LIBRARY_DIR}/${LOG4CXX_LIBRARY_NAME}.*")
+file (GLOB snappy-lib "${SNAPPY_LIBRARY_DIR}/${SNAPPY_LIBRARY_NAME}.*")
+
+install(
+    FILES
+        ${avro-lib}
+        ${log4cxx-lib}
+        ${snappy-lib}
+    DESTINATION
+        ${CMAKE_PREFIX_PATH}/lib
+)                      
+
+install(
+    DIRECTORY
+        ${AVRO_INCLUDE_DIRS}
+        ${LOG4CXX_INCLUDE_DIRS}
+    DESTINATION
+        ${CMAKE_PREFIX_PATH}/include
+)
 
 #
 # Documentation settings
@@ -151,7 +171,7 @@ if (BUILD_DOC)
  
     set (DOXYFILE_IN          ${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile.in    )
     set (DOXYFILE             ${PROJECT_BINARY_DIR}/Doxyfile             )
-    set (DOXY_HTML_INDEX_FILE ${CMAKE_CURRENT_BINARY_DIR}/html/index.html)
+    set (DOXY_HTML_INDEX_FILE ${CMAKE_CURRENT_BINARY_DIR}/doc/html/index.html)
     set (DOXY_OUTPUT_ROOT     ${CMAKE_CURRENT_BINARY_DIR}                ) # Pasted into Doxyfile.in
     set (DOXY_INPUT           ${PROJECT_SOURCE_DIR}/src                  ) # Pasted into Doxyfile.in
     set (DOXY_EXTRA_FILES     ${CMAKE_CURRENT_SOURCE_DIR}/mainpage.dox   ) # Pasted into Doxyfile.in
@@ -171,7 +191,12 @@ if (BUILD_DOC)
  
     add_custom_target (doc ALL DEPENDS ${DOXY_HTML_INDEX_FILE})
  
-    install (DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/html DESTINATION share/doc )
+    install (
+        DIRECTORY 
+            ${CMAKE_CURRENT_BINARY_DIR}/doc/html 
+        DESTINATION 
+            share/doc/${CMAKE_PROJECT_NAME}-${TARGET_VERSION}
+    )
 endif ()
 
 #
@@ -217,4 +242,5 @@ endif ()
 set (CPACK_PACKAGE_EXECUTABLES "${CMAKE_PROJECT_NAME}" "${CMAKE_PROJECT_NAME}")
 
 include (CPack)
+
 

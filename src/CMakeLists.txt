@@ -23,7 +23,7 @@ set (MODULE_SOURCE_FILES
     ProducerCreationException.cc
     Mapper.cc
     Serializer.cc
-    ClientProxy.cc
+    ClientFacade.cc
 )
 
 configure_file (${CMAKE_PROJECT_NAME}.hh.in ${CMAKE_CURRENT_SOURCE_DIR}/${CMAKE_PROJECT_NAME}.hh)
@@ -37,36 +37,11 @@ install (TARGETS ${CMAKE_PROJECT_NAME}
     LIBRARY DESTINATION lib
 )
 
-file (GLOB schemas "${CMAKE_CURRENT_SOURCE_DIR}/conf/*")
+file (GLOB config-files "${CMAKE_CURRENT_SOURCE_DIR}/conf/*")
 
 install(
     FILES
-        ${schemas}
+        ${config-files}
     DESTINATION
         /etc/${CMAKE_PROJECT_NAME}
-)
-
-file (GLOB avro-lib "${AVRO_LIBRARY_DIR}/${AVRO_LIBRARY_NAME}.*")
-file (GLOB kafka-lib "${KAFKA_LIBRARY_DIR}/${KAFKA_LIBRARY_NAME}.*")
-file (GLOB log4cxx-lib "${LOG4CXX_LIBRARY_DIR}/${LOG4CXX_LIBRARY_NAME}.*")
-file (GLOB snappy-lib "${SNAPPY_LIBRARY_DIR}/${SNAPPY_LIBRARY_NAME}.*")
-
-install(
-    FILES
-        ${avro-lib}
-        ${kafka-lib}
-        ${log4cxx-lib}
-        ${snappy-lib}
-    DESTINATION
-        ${CMAKE_PREFIX_PATH}/lib
-)                      
-
-install(
-    DIRECTORY
-        ${AVRO_INCLUDE_DIRS}
-        ${KAFKA_INCLUDE_DIRS}
-        ${LOG4CXX_INCLUDE_DIRS}
-        ${SNAPPY_INCLUDE_DIRS}
-    DESTINATION
-        ${CMAKE_PREFIX_PATH}/include
 )
