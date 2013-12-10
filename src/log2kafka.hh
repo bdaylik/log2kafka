@@ -26,11 +26,7 @@
 
 #include <csignal>
 #include <iostream>
-#include <memory>
 #include <string>
-
-#include <avro/Encoder.hh>
-#include <avro/Decoder.hh>
 
 #include <boost/program_options.hpp>
 
@@ -39,7 +35,7 @@
 #include <log4cxx/propertyconfigurator.h>
 #include <log4cxx/helpers/exception.h>
 
-#include "ClientProxy.hh"
+#include "ClientFacade.hh"
 #include "Constants.hh"
 
 #endif /* _LOG2KAFKA_HH_ */

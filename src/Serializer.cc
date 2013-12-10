@@ -21,17 +21,18 @@ using namespace boost::filesystem;
 using namespace boost::xpressive;
 using namespace log4cxx;
 
-/* Static fields */
+/*-- static fields --*/
 
 LoggerPtr Serializer::logger(Logger::getLogger("Serializer"));
 
 const string Serializer::schemaMarker = "//--AVRO--";
 
-const string AVRO_SCHEMA_KEY("avro.schema");
-const string AVRO_CODEC_KEY("avro.codec");
-const string AVRO_NULL_CODEC("null");
+const static Magic magic = { { 'O', 'b', 'j', '\x01' } };
+const static string AVRO_SCHEMA_KEY("avro.schema");
+const static string AVRO_CODEC_KEY("avro.codec");
+const static string AVRO_NULL_CODEC("null");
 
-/* Methods */
+/*-- constructors/destructor --*/
 
 Serializer::Serializer() {
 }
@@ -46,6 +47,8 @@ Serializer::Serializer(std::string configFilePath) :
     configure();
 }
 
+/*-- getters/setters --*/
+
 void Serializer::configFilePath(std::string configFilePath) {
     boost::trim(configFilePath);
     this->_configFilePath = configFilePath;
@@ -54,6 +57,8 @@ void Serializer::configFilePath(std::string configFilePath) {
 const string& Serializer::configFilePath() const {
     return this->_configFilePath;
 }
+
+/*-- methods --*/
 
 void Serializer::configure() {
 
@@ -198,10 +203,8 @@ void Serializer::setMetadata(const string& key, const string& value) {
     LOG4CXX_TRACE(logger, "Metadata key value set to: " << value);
 }
 
-static Magic magic = { { 'O', 'b', 'j', '\x01' } };
-
 void Serializer::writeHeader(avro::EncoderPtr& e) {
-    LOG4CXX_INFO(logger, "Write header");
+    LOG4CXX_DEBUG(logger, "Write header");
 
     avro::encode(*e, magic);
     avro::encode(*e, _metadata);
@@ -211,7 +214,7 @@ void Serializer::writeHeader(avro::EncoderPtr& e) {
 }
 
 void Serializer::writeDataBlock(avro::EncoderPtr& e, const avro::GenericDatum& datum, int64_t byteCount) {
-    LOG4CXX_INFO(logger, "Write data block");
+    LOG4CXX_DEBUG(logger, "Write data block");
 
     // A long indicating the count of objects in this block
 

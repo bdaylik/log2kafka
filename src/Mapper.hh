@@ -41,15 +41,19 @@ public:
     Mapper();
     virtual ~Mapper();
 
+    /*-- getters/setters --*/
+
     /**
-     * Set the regular expression pattern.
+     * Set the regular expression pattern to use for fields mapping.
      */
     void pattern(std::string pattern);
 
     /**
-     * Return the regular expresion pattern.
+     * Return the regular expresion pattern mapper used for fields mapping.
      */
     const std::string& pattern() const;
+
+    /*-- methods --*/
 
     /**
      * Map an entry in a generic AVRO datum instance using the pattern and
@@ -59,10 +63,14 @@ public:
 
 private:
 
+    /*-- static fields --*/
+
     /**
      * Class logger.
      */
     static log4cxx::LoggerPtr logger;
+
+    /*-- fields --*/
 
     /**
      * Regular expresion pattern to use to map entries to the AVRO schema

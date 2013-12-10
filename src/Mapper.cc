@@ -20,17 +20,19 @@ using namespace std;
 using namespace boost::xpressive;
 using namespace log4cxx;
 
-/* Static fields */
+/*-- Static fields --*/
 
 LoggerPtr Mapper::logger(Logger::getLogger("Mapper"));
 
-/* methods */
+/*-- constructors/destructor --*/
 
 Mapper::Mapper() {
 }
 
 Mapper::~Mapper() {
 }
+
+/*-- getters/setters --*/
 
 void Mapper::pattern(std::string pattern) {
     this->_pattern = pattern;
@@ -39,6 +41,8 @@ void Mapper::pattern(std::string pattern) {
 const string& Mapper::pattern() const {
     return this->_pattern;
 }
+
+/*-- methods --*/
 
 void Mapper::map(avro::GenericDatum& datum, const string& entry) {
 

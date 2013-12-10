@@ -57,95 +57,125 @@ typedef std::map<std::string, std::vector<uint8_t>> Metadata;
 class Serializer {
 public:
 
-	Serializer();
-	virtual ~Serializer();
+    Serializer();
+    virtual ~Serializer();
 
-	/**
-	 * Class constructor with direct schema definition initialization.
-	 *
-	 * After setting the schema configuration file path, the constructor
-	 * invoke the #configure() method.
-	 *
-	 * @param configFilePath the file path to the schema configuration
-	 *                       and mapping
-	 */
-	explicit Serializer(std::string configFilePath);
+    /**
+     * Class constructor with direct schema definition initialization.
+     *
+     * After setting the schema configuration file path, the constructor
+     * invoke the #configure() method.
+     *
+     * @param configFilePath the file path to the schema configuration
+     *                       and mapping
+     */
+    explicit Serializer(std::string configFilePath);
 
-	/**
-	 * Set the configuration file path.
-	 */
-	void configFilePath(std::string configFilePath);
+    /*-- getters/setters --*/
 
-	/**
-	 * Return the configuration file path.
-	 */
-	const std::string& configFilePath() const;
+    /**
+     * Set the configuration file path.
+     */
+    void configFilePath(std::string configFilePath);
 
-	/**
-	 * Read de configuration file and load the schema mapper to use for
-	 * serialization.
-	 */
-	void configure();
+    /**
+     * Return the configuration file path.
+     */
+    const std::string& configFilePath() const;
 
-	/**
-	 * Serialize a input text using the schema and mapper defined for the
-	 * instance.
-	 *
-	 * @param entry the input text to serialize
-	 * @param data the output data buffer
-	 */
-	void serialize(const std::string& entry, std::auto_ptr<avro::OutputStream>& data);
+    /*-- methods --*/
+
+    /**
+     * Read de configuration file and load the schema mapper to use for
+     * serialization.
+     */
+    void configure();
+
+    /**
+     * Serialize a input text using the schema and mapper defined for the
+     * instance.
+     *
+     * @param[in] entry The input text to serialize
+     * @param[out] data The output data buffer
+     */
+    void serialize(const std::string& entry, std::auto_ptr<avro::OutputStream>& data);
 
 private:
-	/**
-	 * Class logger.
-	 */
-	static log4cxx::LoggerPtr logger;
 
-	/**
-	 * Text that mark the beginning of the AVRO schema definition in the
-	 * configuration file.
-	 */
-	static const std::string schemaMarker;
+    /*-- static fields --*/
 
-	/**
-	 * Schema and pattern mapper configuration file.
-	 */
-	std::string _configFilePath;
+    /**
+     * Class logger.
+     */
+    static log4cxx::LoggerPtr logger;
 
-	/**
-	 * AVRO Schema mapper.
-	 */
-	Mapper _mapper;
+    /**
+     * Text that mark the beginning of the AVRO schema definition in the
+     * configuration file.
+     */
+    static const std::string schemaMarker;
 
-	DataBlockSync _sync;
+    /*-- fields --*/
 
-	Metadata _metadata;
+    /**
+     * Schema and pattern mapper configuration file.
+     */
+    std::string _configFilePath;
 
-	/* methods */
+    /**
+     * AVRO Schema mapper.
+     */
+    Mapper _mapper;
 
-	/**
-	 * Load a schema mapper according to the definition read from the input
-	 * stream.
-	 *
-	 * @param is the input stream to read.
-	 */
-	void loadMapper(std::istream &is);
+    /**
+     * Avro data block sync marker.
+     */
+    DataBlockSync _sync;
 
-	void writeHeader(avro::EncoderPtr& e);
+    /**
+     * Avro metadata key-value pairs.
+     */
+    Metadata _metadata;
 
-	void writeDataBlock(avro::EncoderPtr& e, const avro::GenericDatum& datum, int64_t byteCount);
+    /*-- methods --*/
 
-	void setMetadata(const std::string& key, const std::string& value);
+    /**
+     * Load a schema mapper according to the definition read from the input
+     * stream.
+     *
+     * @param is the input stream to read.
+     */
+    void loadMapper(std::istream &is);
 
-	DataBlockSync makeSync();
+    /**
+     * Write the Avro serialized message header.
+     */
+    void writeHeader(avro::EncoderPtr& e);
 
-	/**
-	 * Display schema instance debug information.
-	 *
-	 * @param schema the AVRO schema instance to display.
-	 */
-	void debugSchemaNode(const avro::ValidSchema &schema) const;
+    /**
+     * Write the Avro serialized message data block.
+     */
+    void writeDataBlock(avro::EncoderPtr& e, const avro::GenericDatum& datum, int64_t byteCount);
+
+    /**
+     * Set an Avro metadata key-value pair.
+     *
+     * @param key the metadata key name
+     * @param value the metadata key value
+     */
+    void setMetadata(const std::string& key, const std::string& value);
+
+    /**
+     *  Calculate and return a Avro data block sync marker.
+     */
+    DataBlockSync makeSync();
+
+    /**
+     * Display schema instance debug information.
+     *
+     * @param schema the AVRO schema instance to display.
+     */
+    void debugSchemaNode(const avro::ValidSchema &schema) const;
 };
 
 #endif /* _LOG2KAFKA_SERIALIZER_HH_ */

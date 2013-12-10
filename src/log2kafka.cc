@@ -14,6 +14,20 @@
  * limitations under the License.
  */
 
+/*! \mainpage Log 2 Kafka Producer
+ *
+ * \section intro_sec Introduction
+ *
+ * log2kafka is an utility to serialize and send a web application's log
+ * entries to Apache Kafka using Apache Avro.
+ *
+ * \section install_sec Installation
+ *
+ * \subsection step1 Step 1: Opening the box
+ *
+ * > TODO
+ */
+
 #include "log2kafka.hh"
 
 using namespace std;
@@ -36,24 +50,21 @@ int main(int argc, char** argv) {
 
     int result = EXIT_SUCCESS;
 
-    // TODO: include compression codec argument
-
     po::options_description description("Allowed options");
+
     description.add_options()
     ("help,?", "produce help message")
     ("client,c", po::value<std::string>()->default_value(Constants::DEFAULT_CLIENT_ID),
             "producer client name/id")
     ("host,h", po::value<std::string>(), "broker hostname/ip")
     ("port,p", po::value<int>(), "broker port number")
-    ("log-config,l", po::value<std::string>(), "log4cxx configuration file path")
     ("schema,s", po::value<std::string>(),
             "avro definitition file to use for serialization - if omitted the raw entry will be sent")
     ("topic,t", po::value<std::string>(), "target topic in the form <topic_name>[:<partition>]")
     ("key,k", po::value<string>()->default_value(Constants::DEFAULT_MESSAGE_KEY), "kafka message key to use")
-    ("required-acks", po::value<int>()->default_value(Constants::DEFAULT_REQUIRED_ACKS),
-            "required acknowledged mode")
-    ("timeout-acks", po::value<int>()->default_value(Constants::DEFAULT_TIMEOUT_ACKS),
-            "required acknowledged timeout in milliseconds")
+    ("codec,z", po::value<string>(), "Compression codec: gzip|snappy")
+    ("log-config,l", po::value<std::string>(), "log4cxx configuration file path")
+    ("kafka-config,k", po::value<string>(), "Additional librdkafka configuration options file path")
     ("message,m", po::value<std::string>(), "message to send - if not indicated then standard input is used")
     ("version", "display version number");
 
@@ -113,15 +124,17 @@ int main(int argc, char** argv) {
     try {
         /* Prepare client connection proxy */
 
-        auto proxy = unique_ptr<ClientProxy>(new ClientProxy());
+        auto proxy = unique_ptr<ClientFacade>(new ClientFacade());
 
         proxy->clientId(vm["client"].as<string>());
         proxy->messageKey(vm["key"].as<string>());
         proxy->host(vm["host"].as<string>());
         proxy->port(vm["port"].as<int>());
         proxy->topic(vm["topic"].as<string>());
-        proxy->requiredAcks(vm["required-acks"].as<int>());
-        proxy->timeoutAcks(vm["timeout-acks"].as<int>());
+
+        if (vm.count("codec")) {
+            proxy->codec(vm["codec"].as<string>());
+        }
 
         if (vm.count("schema")) {
             LOG4CXX_DEBUG(logger, "Schema defined. Using AVRO serialization mode");
@@ -191,7 +204,7 @@ inline void debugArguments(const po::variables_map& vm) {
             << "\n\tport: " << vm["port"].as<int>()
             << "\n\ttopic: " << vm["topic"].as<string>()
             << "\n\tschema: " << (vm.count("schema") ? vm["schema"].as<string>() : "")
-            << "\n\trequired-acks: " << vm["required-acks"].as<int>()
-            << "\n\ttimeout-acks: " << vm["timeout-acks"].as<int>()
-            << "\n\tlog-config: " << (vm.count("log-config") ? vm["log-config"].as<string>() : ""));
+            << "\n\tcodec: " << (vm.count("codec") ? vm["codec"].as<string>() : "")
+            << "\n\tlog-config: " << (vm.count("log-config") ? vm["log-config"].as<string>() : "")
+            << "\n\tkafka-config: " << (vm.count("kafka-config") ? vm["kafka-config"].as<string>() : ""));
 }

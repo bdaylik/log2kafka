@@ -16,8 +16,8 @@
 
 #pragma once
 
-#ifndef _LOG2KAFKA_CLIENT_PROXY_HH_
-#define _LOG2KAFKA_CLIENT_PROXY_HH_
+#ifndef _LOG2KAFKA_CLIENT_FACADE_HH_
+#define _LOG2KAFKA_CLIENT_FACADE_HH_
 
 #include <string>
 #include <cstring>
@@ -25,7 +25,6 @@
 #include <functional>
 #include <iomanip>
 #include <memory>
-#include <unordered_map>
 #include <vector>
 
 #include <boost/lexical_cast.hpp>
@@ -39,16 +38,16 @@ extern "C" {
 #include "Constants.hh"
 #include "Serializer.hh"
 
-typedef std::unordered_map<std::string, int> topicmap;
-
 /**
- * Proxy client connection class.
+ * Client connection facade class.
  */
-class ClientProxy {
+class ClientFacade {
 public:
 
-    ClientProxy();
-    virtual ~ClientProxy();
+    ClientFacade();
+    virtual ~ClientFacade();
+
+    /*-- getters/setters --*/
 
     /**
      * Set the Client ID.
@@ -73,29 +72,17 @@ public:
     /**
      * Set the topic and possibly the partition.
      *
-     * The format expected of the string is &lt;topic_name&gt;[:&lt;partition&gt;].
-     * Where a random partition will be selected if omitted.
+     * The format expected of the string is *&lt;topic_name&gt;[:&lt;partition&gt;]*.
+     * If omitted, a random partition will be selected.
+     *
+     * @pre The given topic value is not blank (empty or all spaces).
      */
     void topic(std::string topic);
 
     /**
-     * Set the required acknowledment mode. (Default: 1)
-     *
-     * Typical values are:
-     *
-     * 0 = never waits for an acknowledgement from the broker
-     *
-     * 1 = gets an acknowledgement after the leader replica has received the data
-     *
-     * -1 = gets an acknowledgement after all in-sync replicas have received the data
+     * Set the kafka compression codec to use.
      */
-    void requiredAcks(int requiredAcks);
-
-    /**
-     * Set the amount of time in milliseconds the broker will wait trying to
-     * meet the required acknowledgement requirement.
-     */
-    void timeoutAcks(int timeoutAcks);
+    void codec(std::string codec);
 
     /**
      * Configure an AVRO serializer instance according to the specified
@@ -104,6 +91,8 @@ public:
      * @param configFile the file path to the schema configuration and mapping
      */
     void serializer(const std::string& configFile);
+
+    /*-- methods --*/
 
     /**
      * Prepare and establish the kafka client connection.
@@ -124,20 +113,24 @@ public:
 
 private:
 
+    /*-- static fields --*/
+
     /**
      * Class logger.
      */
     static log4cxx::LoggerPtr logger;
 
+    /*-- fields --*/
+
     /**
      * The kafka client handle.
      */
-    rd_kafka_t* kafka_client_;
+    rd_kafka_t* kafkaClient_;
 
     /**
      * The kafka configuration object;
      */
-    rd_kafka_conf_t* kafka_conf_;
+    rd_kafka_conf_t* kafkaConfig_;
 
     /**
      * Client identification.
@@ -163,30 +156,6 @@ private:
     int port_;
 
     /**
-     * This value controls when a produce request is considered completed.
-     * (Default: 1)
-     *
-     * Specifically, how many other brokers must have committed the data to
-     * their log and acknowledged this to the leader.
-     *
-     * Typical values are:
-     *
-     * 0 = never waits for an acknowledgement from the broker
-     *
-     * 1 = gets an acknowledgement after the leader replica has received the data
-     *
-     * -1 = gets an acknowledgement after all in-sync replicas have received the data
-     */
-    int requiredAcks_;
-
-    /**
-     * The amount of time in milliseconds the broker will wait trying to meet
-     * the required acks requirement before sending back an error to the client.\
-     * (Default: 2000)
-     */
-    int timeoutAcks_;
-
-    /**
      * Topic name.
      */
     std::string topic_;
@@ -198,13 +167,16 @@ private:
     int partition_;
 
     /**
+     * Compression codec name.
+     */
+    std::string codec_;
+
+    /**
      * Serializer object to use.
      */
     std::unique_ptr<Serializer> serializer_;
 
-    /*
-     * Methods
-     */
+    /*-- static methods --*/
 
     /**
      * Message delivery report callback.
@@ -214,6 +186,8 @@ private:
      */
     static void deliverCallback(rd_kafka_t* rk, void* payload, size_t len, rd_kafka_resp_err_t error_code,
             void* opaque, void* msg_opaque);
+
+    /*-- methods --*/
 
     /**
      * Initialize members with default values.
@@ -228,4 +202,4 @@ private:
     int generateCorrelationId();
 };
 
-#endif /* _LOG2KAFKA_CLIENT_PROXY_HH_ */
+#endif /* _LOG2KAFKA_CLIENT_FACADE_HH_ */

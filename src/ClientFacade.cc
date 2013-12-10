@@ -1,3 +1,14 @@
+/**
+ * @file ClientFacade.cc
+ * @brief Client connection facade class.
+ * @author Reinaldo Silva
+ * @version 1.0
+ * @date 2013
+ * @copyright Copyright 2013 Produban. All rights reserved.
+ * @copyright Licensed under the Apache License, Version 2.0
+ * @copyright http://www.apache.org/licenses/LICENSE-2.0
+ */
+
 /*
  * Copyright 2013 Produban
  *
@@ -14,39 +25,42 @@
  * limitations under the License.
  */
 
-#include "ClientProxy.hh"
+#include "ClientFacade.hh"
 
 using namespace std;
 using namespace log4cxx;
 
-LoggerPtr ClientProxy::logger(Logger::getLogger("ClientProxy"));
+LoggerPtr ClientFacade::logger(Logger::getLogger("ClientFacade"));
 
-ClientProxy::ClientProxy() {
+/**
+ * Default constructor.
+ */
+ClientFacade::ClientFacade() {
     initDefaults();
 }
 
-ClientProxy::~ClientProxy() {
+ClientFacade::~ClientFacade() {
     flush();
-    rd_kafka_destroy(kafka_client_);
+    rd_kafka_destroy(kafkaClient_);
 }
 
-void ClientProxy::clientId(std::string clientId) {
+void ClientFacade::clientId(std::string clientId) {
     this->clientId_ = clientId;
 }
 
-void ClientProxy::messageKey(std::string messageKey) {
+void ClientFacade::messageKey(std::string messageKey) {
     this->messageKey_ = messageKey;
 }
 
-void ClientProxy::host(std::string host) {
+void ClientFacade::host(std::string host) {
     this->host_ = host;
 }
 
-void ClientProxy::port(int port) {
+void ClientFacade::port(int port) {
     this->port_ = port;
 }
 
-void ClientProxy::topic(std::string topic) {
+void ClientFacade::topic(std::string topic) {
     vector<string> fields;
 
     boost::split(fields, topic, boost::is_any_of(":"));
@@ -64,42 +78,42 @@ void ClientProxy::topic(std::string topic) {
     topic_ = fields[0];
 }
 
-void ClientProxy::requiredAcks(int requiredAcks) {
-    this->requiredAcks_ = requiredAcks;
+void ClientFacade::codec(string codec) {
+    this->codec_ = codec;
 }
 
-void ClientProxy::timeoutAcks(int timeoutAcks) {
-    this->timeoutAcks_ = timeoutAcks;
-}
-
-void ClientProxy::serializer(const string& configFile) {
+void ClientFacade::serializer(const string& configFile) {
     unique_ptr<Serializer> serializer(new Serializer(configFile));
     this->serializer_ = move(serializer);
 }
 
-void ClientProxy::initDefaults() {
+void ClientFacade::initDefaults() {
     clientId_ = Constants::DEFAULT_CLIENT_ID;
-    requiredAcks_ = Constants::DEFAULT_REQUIRED_ACKS;
-    timeoutAcks_ = Constants::DEFAULT_TIMEOUT_ACKS;
     partition_ = RD_KAFKA_PARTITION_UA;
 }
 
-void ClientProxy::connect() {
+void ClientFacade::connect() {
 
     /* Kafka configuration */
 
-    kafka_conf_ = rd_kafka_conf_new();
+    kafkaConfig_ = rd_kafka_conf_new();
+    rd_kafka_conf_res_t kafkaConfResult;
+
+    // TODO: read additional librdkafka options from a properties files
+//    kafkaConfResult = rd_kafka_conf_set(myconf, "socket.timeout.ms", "600", errstr, sizeof(errstr));
+//     if (res != RD_KAFKA_CONF_OK)
+//         die("%s\n", errstr);
 
     /* Set up a message delivery report callback.
      * It will be called once for each message, either on successful
      * delivery to broker, or upon failure to deliver to broker. */
-    rd_kafka_conf_set_dr_cb(kafka_conf_, ClientProxy::deliverCallback);
+    rd_kafka_conf_set_dr_cb(kafkaConfig_, ClientFacade::deliverCallback);
 
     /* Create Kafka handle */
 
     char errstr[512];
 
-    if (!(kafka_client_ = rd_kafka_new(RD_KAFKA_PRODUCER, kafka_conf_, errstr, sizeof(errstr)))) {
+    if (!(kafkaClient_ = rd_kafka_new(RD_KAFKA_PRODUCER, kafkaConfig_, errstr, sizeof(errstr)))) {
         throw ProducerCreationException(errstr);
     }
 
@@ -108,17 +122,16 @@ void ClientProxy::connect() {
     ostringstream broker;
     broker << host_ << ":" << port_;
 
-    if (rd_kafka_brokers_add(kafka_client_, broker.str().data()) == 0) {
+    if (rd_kafka_brokers_add(kafkaClient_, broker.str().data()) == 0) {
         throw InvalidBrokerException();
     }
 }
 
-void ClientProxy::flush() {
-    // TODO: timeout value refactoring
-    rd_kafka_poll(kafka_client_, 1000);
+void ClientFacade::flush() {
+    rd_kafka_poll(kafkaClient_, Constants::DEFAULT_CALLBACK_WAITING_TIMEOUT);
 }
 
-void ClientProxy::sendMessage(const string& message) {
+void ClientFacade::sendMessage(const string& message) {
 
     LOG4CXX_DEBUG(logger, "Message: " << message);
 
@@ -129,7 +142,7 @@ void ClientProxy::sendMessage(const string& message) {
     /* Prepare Kafka Topic */
 
     kafkaTopicConfig = rd_kafka_topic_conf_new();
-    kafkaTopic = rd_kafka_topic_new(kafka_client_, topic_.data(), kafkaTopicConfig);
+    kafkaTopic = rd_kafka_topic_new(kafkaClient_, topic_.data(), kafkaTopicConfig);
 
     /* Prepare message */
 
@@ -199,18 +212,18 @@ void ClientProxy::sendMessage(const string& message) {
     rd_kafka_produce(kafkaTopic, partition_, RD_KAFKA_MSG_F_FREE, reinterpret_cast<char *>(value),
             valueLength, key, keyLength, NULL);
 
-    LOG4CXX_INFO(logger,
+    LOG4CXX_DEBUG(logger,
             "Sent " << valueLength << " bytes to topic " << rd_kafka_topic_name(kafkaTopic) << ":" << partition_);
 
     /* Poll to handle delivery reports */
 
-    rd_kafka_poll(kafka_client_, 0);
+    rd_kafka_poll(kafkaClient_, 0);
 
     delete key;
-    //delete value; // Clean forced by RD_KAFKA_MSG_F_FREE
+    //delete value; // Clean forced above by RD_KAFKA_MSG_F_FREE option
 }
 
-void ClientProxy::deliverCallback(rd_kafka_t *rk, void *payload, size_t len, rd_kafka_resp_err_t error_code,
+void ClientFacade::deliverCallback(rd_kafka_t *rk, void *payload, size_t len, rd_kafka_resp_err_t error_code,
         void *opaque, void *msg_opaque) {
 
     if (error_code) {
@@ -221,7 +234,10 @@ void ClientProxy::deliverCallback(rd_kafka_t *rk, void *payload, size_t len, rd_
     }
 }
 
-int ClientProxy::generateCorrelationId() {
+/**
+ * Generate a unique number to be used as request correlation identification.
+ */
+int ClientFacade::generateCorrelationId() {
     hash<std::string> hash_fn;
     time_t now = time(NULL);
     return hash_fn(ctime(&now));

@@ -25,6 +25,10 @@
  * Indicate an invalid broker definition.
  */
 class InvalidBrokerException: public std::exception {
+
+    /**
+     * Return the exception description message.
+     */
     virtual const char* what() const throw ();
 };
 
@@ -33,14 +37,22 @@ class InvalidBrokerException: public std::exception {
  * defined.
  */
 class InvalidMapperException: public std::exception {
+
+    /**
+     * Return the exception description message.
+     */
     virtual const char* what() const throw ();
 };
 
 /**
- * Indicate a mismatch between an received entry and the schema mapper
- * selected to procees it.
+ * Indicate a mismatch between a received entry and the schema mapper
+ * selected to process it.
  */
 class MapperMatchException: public std::exception {
+
+    /**
+     * Return the exception description message.
+     */
     virtual const char* what() const throw ();
 };
 
@@ -50,7 +62,17 @@ class MapperMatchException: public std::exception {
 class ProducerCreationException: public std::exception {
 public:
     ProducerCreationException();
+
+    /**
+     * Class constructor.
+     *
+     * @param message the exception description message
+     */
     explicit ProducerCreationException(const char* message);
+
+    /**
+     * Return the exception description message.
+     */
     virtual const char* what() const throw ();
 
 private:
