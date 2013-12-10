@@ -21,6 +21,4 @@ using namespace std;
 const string Constants::DEFAULT_CLIENT_ID = "Log2Kafka Producer";
 const string Constants::DEFAULT_SCHEMA_PATH = "/etc/log2kafka/";
 const string Constants::DEFAULT_MESSAGE_KEY = "L2K"; // Simply the acronym for log2kafka
-
-const int Constants::DEFAULT_REQUIRED_ACKS = 1;
-const int Constants::DEFAULT_TIMEOUT_ACKS = 2000;
+const int Constants::DEFAULT_CALLBACK_WAITING_TIMEOUT = 1000;

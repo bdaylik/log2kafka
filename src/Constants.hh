@@ -45,9 +45,10 @@ public:
     static const std::string DEFAULT_MESSAGE_KEY;
 
     /**
-     * Default required acknowledgement mode: 1
+     * Default minimum amount of time that a kafka event callback will block
+     * waiting for events: 1000 ms
      */
-    static const int DEFAULT_REQUIRED_ACKS;
+    static const int DEFAULT_CALLBACK_WAITING_TIMEOUT;
 
     /**
      * Default acknowledgement timeout: 2000 ms
