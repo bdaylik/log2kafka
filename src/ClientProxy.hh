@@ -30,13 +30,14 @@
 
 #include <boost/lexical_cast.hpp>
 
-#include <libkafka/Client.h>
 #include <log4cxx/logger.h>
+
+extern "C" {
+#include <librdkafka/rdkafka.h>
+}
 
 #include "Constants.hh"
 #include "Serializer.hh"
-
-namespace kafka = LibKafka;
 
 typedef std::unordered_map<std::string, int> topicmap;
 
@@ -105,6 +106,16 @@ public:
     void serializer(const std::string& configFile);
 
     /**
+     * Prepare and establish the kafka client connection.
+     */
+    void connect();
+
+    /**
+     * Flush message queue.
+     */
+    void flush();
+
+    /**
      * Send a message to kafka.
      *
      * @param message the message to be sent
@@ -117,6 +128,16 @@ private:
      * Class logger.
      */
     static log4cxx::LoggerPtr logger;
+
+    /**
+     * The kafka client handle.
+     */
+    rd_kafka_t* kafka_client_;
+
+    /**
+     * The kafka configuration object;
+     */
+    rd_kafka_conf_t* kafka_conf_;
 
     /**
      * Client identification.
@@ -135,11 +156,6 @@ private:
      * Broker hostname/ip.
      */
     std::string host_;
-
-    /**
-     * Broker hostname/ip.
-     */
-    std::unique_ptr<kafka::Client> client_;
 
     /**
      * Broker port number.
@@ -171,14 +187,33 @@ private:
     int timeoutAcks_;
 
     /**
-     * List of topics.
+     * Topic name.
      */
-    topicmap topics_;
+    std::string topic_;
+
+    /**
+     * Topic partition.
+     * (Default: -1, random selection)
+     */
+    int partition_;
 
     /**
      * Serializer object to use.
      */
     std::unique_ptr<Serializer> serializer_;
+
+    /*
+     * Methods
+     */
+
+    /**
+     * Message delivery report callback.
+     * Called once for each message.
+     *
+     * @see rdkafka.h
+     */
+    static void deliverCallback(rd_kafka_t* rk, void* payload, size_t len, rd_kafka_resp_err_t error_code,
+            void* opaque, void* msg_opaque);
 
     /**
      * Initialize members with default values.
@@ -191,15 +226,6 @@ private:
      * Generate an unique correlation id for a request.
      */
     int generateCorrelationId();
-
-    kafka::Message* createMessage(const std::auto_ptr<avro::OutputStream>& data);
-
-    kafka::ProduceMessageSet* createMessageSet(int partition, const std::auto_ptr<avro::OutputStream>& data);
-
-    kafka::TopicNameBlock<kafka::ProduceMessageSet>* createRequestTopicNameBlock(const std::string& topic,
-            int partition, const std::auto_ptr<avro::OutputStream>& data);
-
-    kafka::ProduceRequest* createProduceRequest(const std::auto_ptr<avro::OutputStream>& data);
 };
 
 #endif /* _LOG2KAFKA_CLIENT_PROXY_HH_ */

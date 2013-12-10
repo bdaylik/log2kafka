@@ -24,6 +24,7 @@
 #define @CMAKE_PROJECT_NAME@_VERSION_MINOR @TARGET_VERSION_MINOR@
 #define @CMAKE_PROJECT_NAME@_VERSION "@TARGET_VERSION@"
 
+#include <csignal>
 #include <iostream>
 #include <memory>
 #include <string>

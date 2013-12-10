@@ -19,8 +19,6 @@
 using namespace std;
 using namespace log4cxx;
 
-namespace kafka = LibKafka;
-
 LoggerPtr ClientProxy::logger(Logger::getLogger("ClientProxy"));
 
 ClientProxy::ClientProxy() {
@@ -28,6 +26,8 @@ ClientProxy::ClientProxy() {
 }
 
 ClientProxy::~ClientProxy() {
+    flush();
+    rd_kafka_destroy(kafka_client_);
 }
 
 void ClientProxy::clientId(std::string clientId) {
@@ -48,22 +48,20 @@ void ClientProxy::port(int port) {
 
 void ClientProxy::topic(std::string topic) {
     vector<string> fields;
-    int partition = 0;
-
-    // TODO: document pre condition: topic name present
 
     boost::split(fields, topic, boost::is_any_of(":"));
 
     if (fields.size() >= 2) {
         try {
-            partition = boost::lexical_cast<int>(fields[1]);
+            partition_ = boost::lexical_cast<int>(fields[1]);
         }
         catch (exception& e) {
-            LOG4CXX_WARN(logger, "Invalid partition value: " << fields[1] << ". Defaulting to: " << partition);
+            LOG4CXX_WARN(logger,
+                    "Invalid partition value: " << fields[1] << ". Defaulting to: " << partition_);
         }
     }
 
-    this->topics_.insert(make_pair(fields[0], partition));
+    topic_ = fields[0];
 }
 
 void ClientProxy::requiredAcks(int requiredAcks) {
@@ -80,101 +78,62 @@ void ClientProxy::serializer(const string& configFile) {
 }
 
 void ClientProxy::initDefaults() {
-    this->clientId_ = Constants::DEFAULT_CLIENT_ID;
-    this->requiredAcks_ = Constants::DEFAULT_REQUIRED_ACKS;
-    this->timeoutAcks_ = Constants::DEFAULT_TIMEOUT_ACKS;
+    clientId_ = Constants::DEFAULT_CLIENT_ID;
+    requiredAcks_ = Constants::DEFAULT_REQUIRED_ACKS;
+    timeoutAcks_ = Constants::DEFAULT_TIMEOUT_ACKS;
+    partition_ = RD_KAFKA_PARTITION_UA;
 }
 
-kafka::Message* ClientProxy::createMessage(const auto_ptr<avro::OutputStream>& data) {
+void ClientProxy::connect() {
 
-    int crc = 0;
-    int offset = -1;
-    signed char magicByte = 1;
-    signed char attributes = 0; // last three bits must be zero to disable gzip compression
+    /* Kafka configuration */
 
-    // Copy message key
+    kafka_conf_ = rd_kafka_conf_new();
 
-    int keyLength = this->messageKey_.length();
-    uint8_t* key = new uint8_t[keyLength];
+    /* Set up a message delivery report callback.
+     * It will be called once for each message, either on successful
+     * delivery to broker, or upon failure to deliver to broker. */
+    rd_kafka_conf_set_dr_cb(kafka_conf_, ClientProxy::deliverCallback);
 
-    memcpy(key, this->messageKey_.data(), keyLength);
+    /* Create Kafka handle */
 
-    // Copy message value
+    char errstr[512];
 
-    uint64_t valueLength = data->byteCount();
-    uint8_t* value = new uint8_t[valueLength];
-
-    auto_ptr<avro::InputStream> dataInput = avro::memoryInputStream(*data);
-    avro::StreamReader reader(*dataInput);
-    reader.readBytes(value, valueLength);
-
-    if (LOG4CXX_UNLIKELY(logger->isDebugEnabled())) {
-        LOG4CXX_DEBUG(logger, "Message to be sent:");
-        LOG4CXX_DEBUG(logger, "MESSAGE BEGIN");
-        cout.write(reinterpret_cast<const char*>(value), valueLength);
-        cout << endl;
-        LOG4CXX_DEBUG(logger, "MESSAGE END");
+    if (!(kafka_client_ = rd_kafka_new(RD_KAFKA_PRODUCER, kafka_conf_, errstr, sizeof(errstr)))) {
+        throw ProducerCreationException(errstr);
     }
 
-    //memcpy(value, message.data(), valueLength);
+    /* Add brokers */
 
-    return new kafka::Message(crc, magicByte, attributes, keyLength, key, valueLength, value, offset);
-}
+    ostringstream broker;
+    broker << host_ << ":" << port_;
 
-kafka::ProduceMessageSet* ClientProxy::createMessageSet(int partition,
-        const auto_ptr<avro::OutputStream>& data) {
-
-    vector<kafka::Message*> messages;
-
-    kafka::Message *kafkaMessage = createMessage(data);
-    messages.push_back(kafkaMessage);
-
-    // sizeof(offset) + sizeof(messageSize) + messageSize
-    int messageSetSize = sizeof(long int) + sizeof(int) + kafkaMessage->getWireFormatSize(false);
-
-    kafka::MessageSet* messageSet = new kafka::MessageSet(messageSetSize, messages);
-    messageSetSize = messageSet->getWireFormatSize(false);
-
-    return new kafka::ProduceMessageSet(partition, messageSetSize, messageSet);
-}
-
-kafka::TopicNameBlock<kafka::ProduceMessageSet>* ClientProxy::createRequestTopicNameBlock(const string& topic,
-        int partition, const auto_ptr<avro::OutputStream>& data) {
-
-    int numMessages = 1;
-
-    kafka::ProduceMessageSet** messageSetArray = new kafka::ProduceMessageSet*[numMessages];
-    messageSetArray[0] = createMessageSet(partition, data);
-
-    return new kafka::TopicNameBlock<kafka::ProduceMessageSet>(topic, numMessages, messageSetArray);
-}
-
-kafka::ProduceRequest* ClientProxy::createProduceRequest(const auto_ptr<avro::OutputStream>& data) {
-
-    int correlationId = generateCorrelationId();
-    vector<std::string>::size_type numTopics = this->topics_.size();
-
-    kafka::TopicNameBlock<kafka::ProduceMessageSet>** topicArray =
-            new kafka::TopicNameBlock<kafka::ProduceMessageSet>*[numTopics];
-
-    int i = 0;
-
-    for (topicmap::iterator it = this->topics_.begin(); it != this->topics_.end(); ++it) {
-        topicArray[i] = createRequestTopicNameBlock(it->first, it->second, data);
-        i++;
+    if (rd_kafka_brokers_add(kafka_client_, broker.str().data()) == 0) {
+        throw InvalidBrokerException();
     }
+}
 
-    return new kafka::ProduceRequest(correlationId, clientId_, requiredAcks_, timeoutAcks_, numTopics,
-            topicArray, false);
+void ClientProxy::flush() {
+    // TODO: timeout value refactoring
+    rd_kafka_poll(kafka_client_, 1000);
 }
 
 void ClientProxy::sendMessage(const string& message) {
 
     LOG4CXX_DEBUG(logger, "Message: " << message);
 
-    auto_ptr<avro::OutputStream> dataOutput = avro::memoryOutputStream();
+    rd_kafka_topic_conf_t *kafkaTopicConfig;
+    rd_kafka_topic_t *kafkaTopic;
+    bool sendRawMessage = false;
+
+    /* Prepare Kafka Topic */
+
+    kafkaTopicConfig = rd_kafka_topic_conf_new();
+    kafkaTopic = rd_kafka_topic_new(kafka_client_, topic_.data(), kafkaTopicConfig);
 
     /* Prepare message */
+
+    auto_ptr<avro::OutputStream> dataOutput = avro::memoryOutputStream();
 
     if (message.length() == 0) {
         LOG4CXX_WARN(logger, "Empty message entry discarded");
@@ -188,45 +147,77 @@ void ClientProxy::sendMessage(const string& message) {
             serializer_->serialize(message, dataOutput);
         }
         catch (exception& e) {
-            //copy(message.begin(), message.end(), back_inserter(preparedMessage));
+            sendRawMessage = true;
             LOG4CXX_ERROR(logger, "Using raw mode due to unexpected exception: " << e.what());
         }
     }
     else { // Use raw mode
-           //copy(message.begin(), message.end(), back_inserter(preparedMessage));
+        sendRawMessage = true;
         LOG4CXX_DEBUG(logger, "No schema defined. Using raw mode");
     }
 
     /* Send request */
 
-    unique_ptr<kafka::ProduceRequest> pr1(createProduceRequest(dataOutput));
-    //kafka::ProduceRequest *pr1 = createProduceRequest(dataOutput);
+    // Copy message key
+    size_t keyLength = messageKey_.length();
+    char* key = new char[keyLength];
+    memcpy(key, messageKey_.data(), keyLength);
 
-    if (pr1) {
-        LOG4CXX_DEBUG(logger, "Request:\n" << pr1.get());
+    // Copy message value
+    size_t valueLength = 0;
+    uint8_t* value = NULL;
 
-        if (!client_) {
-            client_.reset(new kafka::Client(host_, port_));
-        }
+    if (sendRawMessage) {
+        valueLength = message.length();
+        value = new uint8_t[valueLength];
 
-        unique_ptr<kafka::ProduceResponse> pr2(client_->sendProduceRequest(pr1.get()));
-        // kafka::ProduceResponse *pr2 = client_->sendProduceRequest(pr1);
+        memcpy(value, message.data(), valueLength);
+    }
+    else {
+        valueLength = dataOutput->byteCount();
+        value = new uint8_t[valueLength];
 
-        if (pr2) {
-            LOG4CXX_DEBUG(logger, "Response received");
-            LOG4CXX_DEBUG(logger, "Response detail:\n" << pr2.get());
+        auto_ptr<avro::InputStream> dataInput = avro::memoryInputStream(*dataOutput);
+        avro::StreamReader reader(*dataInput);
+        reader.readBytes(value, valueLength);
+    }
 
-            if (pr2->hasErrorCode()) {
-                LOG4CXX_DEBUG(logger, "Unexpected sendProduceRequest error: " << pr2->hasErrorCode());
-            }
+    if (LOG4CXX_UNLIKELY(logger->isDebugEnabled())) {
+        LOG4CXX_DEBUG(logger, "Message to be sent:");
+        LOG4CXX_DEBUG(logger, "MESSAGE BEGIN");
 
-            // delete pr2;
-        }
-        else {
-            LOG4CXX_DEBUG(logger, "Response is null");
-        }
+        // The entire message is not printed with standard cout mechanism
+        // due to NULL character interpretation
+        cout.write(reinterpret_cast<const char*>(value), valueLength);
+        cout << endl;
 
-        // delete pr1;
+        LOG4CXX_DEBUG(logger, "MESSAGE END");
+    }
+
+    /* Send/Produce message. */
+
+    rd_kafka_produce(kafkaTopic, partition_, RD_KAFKA_MSG_F_FREE, reinterpret_cast<char *>(value),
+            valueLength, key, keyLength, NULL);
+
+    LOG4CXX_INFO(logger,
+            "Sent " << valueLength << " bytes to topic " << rd_kafka_topic_name(kafkaTopic) << ":" << partition_);
+
+    /* Poll to handle delivery reports */
+
+    rd_kafka_poll(kafka_client_, 0);
+
+    delete key;
+    //delete value; // Clean forced by RD_KAFKA_MSG_F_FREE
+}
+
+void ClientProxy::deliverCallback(rd_kafka_t *rk, void *payload, size_t len, rd_kafka_resp_err_t error_code,
+        void *opaque, void *msg_opaque) {
+
+    if (error_code) {
+        LOG4CXX_WARN(logger, "Message delivery failed with error code: " << error_code);
+    }
+    else {
+        LOG4CXX_INFO(logger, "Message delivered (" << len << " bytes): ");
     }
 }
 

@@ -24,6 +24,7 @@
 #define log2kafka_VERSION_MINOR 0
 #define log2kafka_VERSION "1.0"
 
+#include <csignal>
 #include <iostream>
 #include <memory>
 #include <string>

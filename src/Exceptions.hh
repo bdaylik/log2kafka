@@ -22,6 +22,13 @@
 #include <exception>
 
 /**
+ * Indicate an invalid broker definition.
+ */
+class InvalidBrokerException: public std::exception {
+    virtual const char* what() const throw ();
+};
+
+/**
  * Indicate an invalid mapper, one without a regular expression pattern
  * defined.
  */
@@ -29,13 +36,25 @@ class InvalidMapperException: public std::exception {
     virtual const char* what() const throw ();
 };
 
-
 /**
  * Indicate a mismatch between an received entry and the schema mapper
  * selected to procees it.
  */
 class MapperMatchException: public std::exception {
     virtual const char* what() const throw ();
+};
+
+/**
+ * Indicate a failure to create a new producer.
+ */
+class ProducerCreationException: public std::exception {
+public:
+    ProducerCreationException();
+    explicit ProducerCreationException(const char* message);
+    virtual const char* what() const throw ();
+
+private:
+    const char* message_;
 };
 
 #endif /* _LOG2KAFKA_EXCEPTION_HH_ */

@@ -49,7 +49,7 @@ elseif (MSVC)
 
 endif ()
 
-set (CMAKE_PREFIX_PATH "/usr/local")
+set (CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "/usr/local")
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 
 # Find Boost
@@ -105,8 +105,11 @@ endif ()
 
 find_package (ApachePortableRuntime REQUIRED)
 find_package (Log4CXX REQUIRED)
-find_package (KafkaCPP REQUIRED)
 find_package (AvroCPP REQUIRED)
+find_package (KafkaC REQUIRED)
+
+#add_library(kafka STATIC IMPORTED)
+#set_property(TARGET kafka PROPERTY IMPORTED_LOCATION ${KAFKA_LIBRARIES})
 
 include_directories (
     ${KAFKA_INCLUDE_DIRS}
@@ -118,8 +121,8 @@ include_directories (
 
 set (LIBS
     ${LIBS}
-    ${AVRO_LIBRARIES}
     ${KAFKA_LIBRARIES}
+    ${AVRO_LIBRARIES}
     ${LOG4CXX_LIBRARIES}
     ${APR_LIBRARIES}
     ${Boost_LIBRARIES}

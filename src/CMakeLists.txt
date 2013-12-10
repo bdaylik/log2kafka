@@ -17,11 +17,13 @@
 set (MODULE_SOURCE_FILES
     ${CMAKE_PROJECT_NAME}.cc
     Constants.cc
+    InvalidBrokerException.cc
     InvalidMapperException.cc
-    Mapper.cc
     MapperMatchException.cc
-    ClientProxy.cc
+    ProducerCreationException.cc
+    Mapper.cc
     Serializer.cc
+    ClientProxy.cc
 )
 
 configure_file (${CMAKE_PROJECT_NAME}.hh.in ${CMAKE_CURRENT_SOURCE_DIR}/${CMAKE_PROJECT_NAME}.hh)

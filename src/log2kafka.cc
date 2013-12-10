@@ -21,7 +21,6 @@ using namespace log4cxx;
 using namespace log4cxx::helpers;
 
 namespace po = boost::program_options;
-namespace kafka = LibKafka;
 
 LoggerPtr logger(Logger::getLogger(BUILD_NAME));
 
@@ -36,6 +35,8 @@ inline void debugArguments(const po::variables_map& vm);
 int main(int argc, char** argv) {
 
     int result = EXIT_SUCCESS;
+
+    // TODO: include compression codec argument
 
     po::options_description description("Allowed options");
     description.add_options()
@@ -55,8 +56,6 @@ int main(int argc, char** argv) {
             "required acknowledged timeout in milliseconds")
     ("message,m", po::value<std::string>(), "message to send - if not indicated then standard input is used")
     ("version", "display version number");
-
-    // TODO: make partition selection optional and ramdomly calculated
 
     po::variables_map vm;
 
@@ -104,10 +103,14 @@ int main(int argc, char** argv) {
         debugArguments(vm);
     }
 
+    /* Socket hangups are gracefully handled in librdkafka on socket error
+     * without the use of signals, so SIGPIPE should be ignored by
+     * the calling program. */
+    signal(SIGPIPE, SIG_IGN );
+
     /* Select action course route */
 
     try {
-
         /* Prepare client connection proxy */
 
         auto proxy = unique_ptr<ClientProxy>(new ClientProxy());
@@ -124,6 +127,8 @@ int main(int argc, char** argv) {
             LOG4CXX_DEBUG(logger, "Schema defined. Using AVRO serialization mode");
             proxy->serializer(vm["schema"].as<string>());
         }
+
+        proxy->connect();
 
         /* Retrieve message to serialize */
 
