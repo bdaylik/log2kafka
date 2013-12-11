@@ -1,7 +1,12 @@
 log2kafka
 =========
 
-> TODO: Elaborate here
+log2kafka is an utility to serialize and send a web application's log entries to Apache Kafka.
+
+Each entry could be sent as:
+
+* Raw text, or
+* An Apache Avro binary serialized message using a record schema of primitive types attributes
 
 Requirements
 ------------
