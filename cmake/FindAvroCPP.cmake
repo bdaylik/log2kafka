@@ -53,9 +53,15 @@ find_path(AVRO_INCLUDE_DIR
         avro
 )
 
+if (AVRO_LINK_STATIC) 
+    set (AVRO_LOOK_FOR_LIB_NAMES avrocpp_s avrocpp)
+else ()
+    set (AVRO_LOOK_FOR_LIB_NAMES avrocpp)
+endif ()
+
 find_library(AVRO_LIBRARY 
 	NAMES 
-        avrocpp
+        ${AVRO_LOOK_FOR_LIB_NAMES}
 	PATHS 
         ${AVRO_ROOT_DIR}/lib 
         ${PC_AVRO_LIBDIR} 

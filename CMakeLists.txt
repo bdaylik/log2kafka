@@ -46,73 +46,106 @@ elseif (MSVC)
     # Warning Level 4 for Debug builds
     list(APPEND CMAKE_CXX_FLAGS_DEBUG " /W4")
     list(REMOVE_DUPLICATES CMAKE_CXX_FLAGS_DEBUG)
-
 endif ()
 
 set (CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "/usr/local")
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 
+#
 # Find Boost
+#
 
 message ("\nLooking for Boost headers and libraries")
 find_package (Boost 1.40 COMPONENTS filesystem system program_options REQUIRED)
+
 add_definitions (${Boost_LIB_DIAGNOSTIC_DEFINITIONS})
 include_directories (${Boost_INCLUDE_DIRS})
+
 message (STATUS "Include directories: ${Boost_INCLUDE_DIR}")
 message (STATUS "Libraries: ${Boost_LIBRARIES}")
 
-
+#
 # Find ZLib
+#
 
 message ("\nLooking for ZLib codec headers and libraries")
 find_package(ZLIB REQUIRED)
+
 message (STATUS "Include directories: ${ZLIB_INCLUDE_DIRS}")
 message (STATUS "Libraries: ${ZLIB_LIBRARIES}")
 
 if (ZLIB_FOUND)
     set (ZLIB_PKG zlib)
     add_definitions (-DDEFLATE_CODEC)
-    include_directories (${ZLIB_INCLUDE_DIRS})
-    message (STATUS "** Enabled deflate codec **")
-
-else ()
-    set (ZLIB_PKG "")
-    set (ZLIB_LIBRARIES "")
-    message (STATUS "** Disabled deflate codec. zlib not found. **")
-
 endif ()
 
-
-# Find Snappy
-
-message ("\nLooking for Snappy codec headers and libraries")
-find_package(Snappy)
-
-if (SNAPPY_FOUND AND ZLIB_FOUND)  # Snappy borrows crc32 from zlib
-    set (SNAPPY_PKG libsnappy)
-    add_definitions (-DSNAPPY_CODEC)
-    include_directories (${SNAPPY_INCLUDE_DIRS})
-    message (STATUS "** Enabled snappy codec **")
-
-else ()
-    set (SNAPPY_PKG "")
-    set (SNAPPY_LIBRARIES "")
-    message (STATUS "** Disabled snappy codec. libsnappy not found or zlib not found. **")
-
-endif ()
-
-# Find others
+# 
+# Find Logging 
+#
 
 find_package (ApachePortableRuntime REQUIRED)
 find_package (Log4CXX REQUIRED)
-find_package (AvroCPP REQUIRED)
+
+# Find Snappy
+
+# message ("\nLooking for Snappy codec headers and libraries")
+# find_package(Snappy)
+
+# if (SNAPPY_FOUND AND ZLIB_FOUND)  # Snappy borrows crc32 from zlib
+    # set (SNAPPY_PKG libsnappy)
+    # add_definitions (-DSNAPPY_CODEC)
+    # include_directories (${SNAPPY_INCLUDE_DIRS})
+    # message (STATUS "** Enabled snappy codec **")
+
+# else ()
+    # set (SNAPPY_PKG "")
+    # set (SNAPPY_LIBRARIES "")
+    # message (STATUS "** Disabled snappy codec. libsnappy not found or zlib not found. **")
+
+# endif ()
+
+
+# 
+# Find Kafka
+#
+
 find_package (KafkaC REQUIRED)
 
-add_library(kafka STATIC IMPORTED)
-set_property(TARGET kafka PROPERTY IMPORTED_LOCATION ${KAFKA_LIBRARY_DIR}/librdkafka.a)
+option (KAFKA_LINK_STATIC "For static linking of kafka library" OFF)
+
+if (KAFKA_LINK_STATIC)
+    message (STATUS "Forced static linking of kafka library")
+    add_library (kafka STATIC IMPORTED)
+else ()
+    include_directories (${KAFKA_INCLUDE_DIRS})
+    add_library (kafka UNKNOWN IMPORTED)
+endif ()
+
+set_property (TARGET kafka PROPERTY IMPORTED_LOCATION ${KAFKA_LIBRARIES})
+
+
+# 
+# Find Avro
+#
+
+find_package (AvroCPP REQUIRED)
+
+option (AVRO_LINK_STATIC "For static linking of avro library" OFF)
+
+if (AVRO_LINK_STATIC)
+    message (STATUS "Forced static linking of avro library")
+    add_library (avro STATIC IMPORTED)
+else ()
+    include_directories (${AVRO_INCLUDE_DIRS})
+    add_library (avro UNKNOWN IMPORTED)
+endif ()
+
+set_property (TARGET avro PROPERTY IMPORTED_LOCATION ${AVRO_LIBRARIES})
+
+
 
 include_directories (
-    ${AVRO_INCLUDE_DIRS}
+    ${ZLIB_INCLUDE_DIRS}
     ${APR_INCLUDE_DIRS}
     ${LOG4CXX_INCLUDE_DIRS}
     ${PROJECT_BINARY_DIR}
@@ -121,33 +154,27 @@ include_directories (
 set (LIBS
     ${LIBS}
     kafka
-    ${AVRO_LIBRARIES}
+    avro
     ${LOG4CXX_LIBRARIES}
     ${APR_LIBRARIES}
     ${Boost_LIBRARIES}
-    ${SNAPPY_LIBRARIES}
     ${ZLIB_LIBRARIES}
 )
 
 include (InstallRequiredSystemLibraries)
 add_subdirectory (src)
 
-file (GLOB avro-lib "${AVRO_LIBRARY_DIR}/${AVRO_LIBRARY_NAME}.*")
 file (GLOB log4cxx-lib "${LOG4CXX_LIBRARY_DIR}/${LOG4CXX_LIBRARY_NAME}.*")
-file (GLOB snappy-lib "${SNAPPY_LIBRARY_DIR}/${SNAPPY_LIBRARY_NAME}.*")
 
 install(
     FILES
-        ${avro-lib}
         ${log4cxx-lib}
-        ${snappy-lib}
     DESTINATION
         ${CMAKE_PREFIX_PATH}/lib
 )                      
 
 install(
     DIRECTORY
-        ${AVRO_INCLUDE_DIRS}
         ${LOG4CXX_INCLUDE_DIRS}
     DESTINATION
         ${CMAKE_PREFIX_PATH}/include
@@ -228,11 +255,9 @@ if (WIN32 AND NOT UNIX)
   #set (CPACK_NSIS_URL_INFO_ABOUT "http:\\\\\\\\www.${CMAKE_PROJECT_NAME}.com")
   #set (CPACK_NSIS_CONTACT "produban@${CMAKE_PROJECT_NAME}.com")
   #set (CPACK_NSIS_MODIFY_PATH ON)
-
 else ()
   set (CPACK_STRIP_FILES "bin/${CMAKE_PROJECT_NAME}")
   set (CPACK_SOURCE_STRIP_FILES "")
-
 endif ()
 
 if (CYGWIN)
@@ -242,5 +267,3 @@ endif ()
 set (CPACK_PACKAGE_EXECUTABLES "${CMAKE_PROJECT_NAME}" "${CMAKE_PROJECT_NAME}")
 
 include (CPack)
-
-

@@ -47,9 +47,15 @@ find_path(KAFKA_INCLUDE_DIR
         librdkafka
 )
 
+if (KAFKA_LINK_STATIC) 
+    set (KAFKA_LOOK_FOR_LIB_NAMES rdkafka.a rdkafka)
+else ()
+    set (KAFKA_LOOK_FOR_LIB_NAMES rdkafka)
+endif ()
+
 find_library(KAFKA_LIBRARY
     NAMES 
-		rdkafka
+		${KAFKA_LOOK_FOR_LIB_NAMES}
     PATHS 
 		${KAFKA_ROOT_DIR}/lib 
 )
