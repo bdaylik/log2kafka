@@ -1,3 +1,14 @@
+/**
+ * @file log2kafka.cc
+ * @brief utility to serialize and send a web application's log entries to Apache Kafka
+ * @author Reinaldo Silva
+ * @version 1.0
+ * @date 2013
+ * @copyright Copyright 2013 Produban. All rights reserved.
+ * @copyright Licensed under the Apache License, Version 2.0
+ * @copyright http://www.apache.org/licenses/LICENSE-2.0
+ */
+
 /*
  * Copyright 2013 Produban
  *
@@ -19,7 +30,13 @@
  * \section intro_sec Introduction
  *
  * log2kafka is an utility to serialize and send a web application's log
- * entries to Apache Kafka using Apache Avro.
+ * entries to Apache Kafka.
+ *
+ * Each entry could be sent as:
+ *
+ * * Raw text, or
+ * * An Apache Avro binary serialized message using a record schema of
+ * primitive types attributes
  *
  * \section install_sec Installation
  *
@@ -58,14 +75,16 @@ int main(int argc, char** argv) {
             "producer client name/id")
     ("host,h", po::value<std::string>(), "broker hostname/ip")
     ("port,p", po::value<int>(), "broker port number")
-    ("schema,s", po::value<std::string>(),
-            "avro definitition file to use for serialization - if omitted the raw entry will be sent")
     ("topic,t", po::value<std::string>(), "target topic in the form <topic_name>[:<partition>]")
+    ("schema,s", po::value<std::string>(),
+            "(optional) avro definitition file to use for serialization - if omitted the raw entry will be sent")
     ("key,k", po::value<string>()->default_value(Constants::DEFAULT_MESSAGE_KEY), "kafka message key to use")
-    ("codec,z", po::value<string>(), "Compression codec: gzip|snappy")
-    ("log-config,l", po::value<std::string>(), "log4cxx configuration file path")
-    ("kafka-config,k", po::value<string>(), "Additional librdkafka configuration options file path")
-    ("message,m", po::value<std::string>(), "message to send - if not indicated then standard input is used")
+    ("codec,z", po::value<string>(), "(optional) Compression codec: gzip|snappy")
+    ("log-config,l", po::value<std::string>(), "(optional) log4cxx configuration file path")
+    ("kafka-config,k", po::value<string>(),
+            "(optional) Additional librdkafka configuration options file path")
+    ("message,m", po::value<std::string>(),
+            "(optional) message to send - if not indicated then standard input is used")
     ("version", "display version number");
 
     po::variables_map vm;
