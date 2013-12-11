@@ -191,8 +191,8 @@ inline void validateArguments(const po::variables_map& vm) {
         throw invalid_argument("'port' argument was not set.");
     }
 
-    if (!vm.count("schema")) {
-        throw invalid_argument("'schema' argument was not set.");
+    if (!vm.count("topic")) {
+        throw invalid_argument("'topic' argument was not set.");
     }
 }
 
