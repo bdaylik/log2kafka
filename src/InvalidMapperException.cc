@@ -1,3 +1,13 @@
+/**
+ * @file InvalidMapperException.cc
+ * @author Reinaldo Silva
+ * @version 1.0
+ * @date 2013
+ * @copyright Copyright 2013 Produban. All rights reserved.
+ * @copyright Licensed under the Apache License, Version 2.0
+ * @copyright http://www.apache.org/licenses/LICENSE-2.0
+ */
+
 /*
  * Copyright 2013 Produban
  *
