@@ -26,7 +26,7 @@ set (MODULE_SOURCE_FILES
     ClientFacade.cc
 )
 
-configure_file (${CMAKE_PROJECT_NAME}.hh.in ${CMAKE_CURRENT_SOURCE_DIR}/${CMAKE_PROJECT_NAME}.hh)
+configure_file (config.hh.in ${CMAKE_CURRENT_SOURCE_DIR}/config.hh)
 
 add_executable (${CMAKE_PROJECT_NAME} ${MODULE_SOURCE_FILES})
 
