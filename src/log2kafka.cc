@@ -25,35 +25,17 @@
  * limitations under the License.
  */
 
-/*! \mainpage Log 2 Kafka Producer
- *
- * \section intro_sec Introduction
- *
- * log2kafka is an utility to serialize and send a web application's log
- * entries to Apache Kafka.
- *
- * Each entry could be sent as:
- *
- * * Raw text, or
- * * An Apache Avro binary serialized message using a record schema of
- * primitive types attributes
- *
- * \section install_sec Installation
- *
- * \subsection step1 Step 1: Opening the box
- *
- * > TODO
- */
+#include "ClientFacade.hh"
 
-#include "log2kafka.hh"
-
-using namespace std;
+#ifdef _LOG2KAFKA_USE_LOG4CXX_
 using namespace log4cxx;
 using namespace log4cxx::helpers;
 
-namespace po = boost::program_options;
-
 LoggerPtr logger(Logger::getLogger(BUILD_NAME));
+#endif
+
+namespace po = boost::program_options;
+using namespace std;
 
 /* Forward function declaration */
 
@@ -80,11 +62,15 @@ int main(int argc, char** argv) {
             "(optional) avro definitition file to use for serialization - if omitted the raw entry will be sent")
     ("key,k", po::value<string>()->default_value(Constants::DEFAULT_MESSAGE_KEY), "kafka message key to use")
     ("codec,z", po::value<string>(), "(optional) Compression codec: gzip|snappy")
-    ("log-config,l", po::value<std::string>(), "(optional) log4cxx configuration file path")
     ("kafka-config,k", po::value<string>(),
             "(optional) Additional librdkafka configuration options file path")
     ("message,m", po::value<std::string>(),
             "(optional) message to send - if not indicated then standard input is used")
+#ifdef _LOG2KAFKA_USE_LOG4CXX_
+    ("log-config,l", po::value<std::string>(), "(optional) log4cxx configuration file path")
+#else
+    ("verbose", "increase verbosity");
+#endif
     ("version", "display version number");
 
     po::variables_map vm;
@@ -114,6 +100,7 @@ int main(int argc, char** argv) {
 
     /* Configure logger */
 
+#ifdef _LOG2KAFKA_USE_LOG4CXX_
     if (vm.count("log-config")) {
         File logconfig(vm["log-config"].as<string>());
         PropertyConfigurator::configure(logconfig);
@@ -129,9 +116,15 @@ int main(int argc, char** argv) {
         rootLooger->setLevel(Level::getWarn());
     }
 
-    if (LOG4CXX_UNLIKELY(logger->isDebugEnabled())) {
-        debugArguments(vm);
-    }
+    Constants::IS_TRACE_ENABLED = LOG4CXX_UNLIKELY(logger->isTraceEnabled());
+    Constants::IS_DEBUG_ENABLED = LOG4CXX_UNLIKELY(logger->isDebugEnabled());
+#else
+    Constants::LOG_VERBOSITY = (vm.count("verbose") != 0);
+    Constants::IS_TRACE_ENABLED = Constants::LOG_VERBOSITY;
+    Constants::IS_DEBUG_ENABLED = Constants::LOG_VERBOSITY;
+#endif
+
+    debugArguments(vm);
 
     /* Socket hangups are gracefully handled in librdkafka on socket error
      * without the use of signals, so SIGPIPE should be ignored by
@@ -156,7 +149,7 @@ int main(int argc, char** argv) {
         }
 
         if (vm.count("schema")) {
-            LOG4CXX_DEBUG(logger, "Schema defined. Using AVRO serialization mode");
+            LOG_DEBUG("Schema defined. Using AVRO serialization mode");
             proxy->serializer(vm["schema"].as<string>());
         }
 
@@ -171,7 +164,7 @@ int main(int argc, char** argv) {
             proxy->sendMessage(entry);
         }
         else { // read from standard input
-            LOG4CXX_DEBUG(logger, "Read from standard input");
+            LOG_DEBUG("Read from standard input");
 
             /* Read a buffer's worth of log file data, exiting on errors */
 
@@ -187,13 +180,11 @@ int main(int argc, char** argv) {
         }
     }
     catch (exception& e) {
-        cerr << "Unexpected exception: " << e.what() << endl;
-        LOG4CXX_ERROR(logger, "Unexpected exception: " << e.what());
+        LOG_ERROR("Unexpected exception: " << e.what());
         result = EXIT_FAILURE;
     }
     catch (...) {
-        cerr << "Unexpected exception." << endl;
-        LOG4CXX_ERROR(logger, "Unexpected exception ");
+        LOG_ERROR("Unexpected exception ");
         result = EXIT_FAILURE;
     }
 
@@ -216,7 +207,7 @@ inline void validateArguments(const po::variables_map& vm) {
 }
 
 inline void debugArguments(const po::variables_map& vm) {
-    LOG4CXX_DEBUG(logger, "Arguments:"
+    LOG_DEBUG("Arguments:"
             << "\n\tclient: " << vm["client"].as<string>()
             << "\n\tkey: " << vm["key"].as<string>()
             << "\n\thost: " << vm["host"].as<string>()
