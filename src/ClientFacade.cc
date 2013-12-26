@@ -28,9 +28,12 @@
 #include "ClientFacade.hh"
 
 using namespace std;
+
+#ifdef _LOG2KAFKA_USE_LOG4CXX_
 using namespace log4cxx;
 
 LoggerPtr ClientFacade::logger(Logger::getLogger("ClientFacade"));
+#endif
 
 /**
  * Default constructor.
@@ -70,8 +73,7 @@ void ClientFacade::topic(std::string topic) {
             partition_ = boost::lexical_cast<int>(fields[1]);
         }
         catch (exception& e) {
-            LOG4CXX_WARN(logger,
-                    "Invalid partition value: " << fields[1] << ". Defaulting to: " << partition_);
+            LOG_WARN("Invalid partition value: " << fields[1] << ". Defaulting to: " << partition_);
         }
     }
 
@@ -133,7 +135,7 @@ void ClientFacade::flush() {
 
 void ClientFacade::sendMessage(const string& message) {
 
-    LOG4CXX_DEBUG(logger, "Message: " << message);
+    LOG_DEBUG("Message: " << message);
 
     rd_kafka_topic_conf_t *kafkaTopicConfig;
     rd_kafka_topic_t *kafkaTopic;
@@ -149,24 +151,24 @@ void ClientFacade::sendMessage(const string& message) {
     auto_ptr<avro::OutputStream> dataOutput = avro::memoryOutputStream();
 
     if (message.length() == 0) {
-        LOG4CXX_WARN(logger, "Empty message entry discarded");
+        LOG_WARN("Empty message entry discarded");
         return;
     }
 
     if (serializer_) { // Use serialization mode
-        LOG4CXX_DEBUG(logger, "Schema defined. Using serialization mode");
+        LOG_DEBUG("Schema defined. Using serialization mode");
 
         try {
             serializer_->serialize(message, dataOutput);
         }
         catch (exception& e) {
             sendRawMessage = true;
-            LOG4CXX_ERROR(logger, "Using raw mode due to unexpected exception: " << e.what());
+            LOG_ERROR("Using raw mode due to unexpected exception: " << e.what());
         }
     }
     else { // Use raw mode
         sendRawMessage = true;
-        LOG4CXX_DEBUG(logger, "No schema defined. Using raw mode");
+        LOG_DEBUG("No schema defined. Using raw mode");
     }
 
     /* Send request */
@@ -195,25 +197,26 @@ void ClientFacade::sendMessage(const string& message) {
         reader.readBytes(value, valueLength);
     }
 
-    if (LOG4CXX_UNLIKELY(logger->isDebugEnabled())) {
-        LOG4CXX_DEBUG(logger, "Message to be sent:");
-        LOG4CXX_DEBUG(logger, "MESSAGE BEGIN");
+    if (Constants::IS_DEBUG_ENABLED) {
+        LOG_DEBUG("MESSAGE");
 
         // The entire message is not printed with standard cout mechanism
         // due to NULL character interpretation
         cout.write(reinterpret_cast<const char*>(value), valueLength);
         cout << endl;
 
-        LOG4CXX_DEBUG(logger, "MESSAGE END");
+        LOG_DEBUG("MESSAGE END");
     }
+
 
     /* Send/Produce message. */
 
     rd_kafka_produce(kafkaTopic, partition_, RD_KAFKA_MSG_F_FREE, reinterpret_cast<char *>(value),
             valueLength, key, keyLength, NULL);
 
-    LOG4CXX_DEBUG(logger,
-            "Sent " << valueLength << " bytes to topic " << rd_kafka_topic_name(kafkaTopic) << ":" << partition_);
+    LOG_DEBUG("Sent " << valueLength
+            << " bytes to topic " << rd_kafka_topic_name(kafkaTopic)
+            << ":" << partition_);
 
     /* Poll to handle delivery reports */
 
@@ -227,10 +230,10 @@ void ClientFacade::deliverCallback(rd_kafka_t *rk, void *payload, size_t len, rd
         void *opaque, void *msg_opaque) {
 
     if (error_code) {
-        LOG4CXX_WARN(logger, "Message delivery failed with error code: " << error_code);
+        LOG_WARN("Message delivery failed with error code: " << error_code);
     }
     else {
-        LOG4CXX_INFO(logger, "Message delivered (" << len << " bytes): ");
+        LOG_INFO("Message delivered (" << len << " bytes): ");
     }
 }
 

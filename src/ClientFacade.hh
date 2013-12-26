@@ -40,13 +40,10 @@
 
 #include <boost/lexical_cast.hpp>
 
-#include <log4cxx/logger.h>
-
 extern "C" {
 #include <librdkafka/rdkafka.h>
 }
 
-#include "Constants.hh"
 #include "Serializer.hh"
 
 /**
@@ -126,10 +123,12 @@ private:
 
     /*-- static fields --*/
 
+#ifdef _LOG2KAFKA_USE_LOG4CXX_
     /**
      * Class logger.
      */
     static log4cxx::LoggerPtr logger;
+#endif
 
     /*-- fields --*/
 

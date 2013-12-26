@@ -30,11 +30,10 @@
 using namespace std;
 using namespace boost::filesystem;
 using namespace boost::xpressive;
-using namespace log4cxx;
 
-/*-- static fields --*/
-
-LoggerPtr Serializer::logger(Logger::getLogger("Serializer"));
+#ifdef _LOG2KAFKA_USE_LOG4CXX_
+log4cxx::LoggerPtr Serializer::logger(Logger::getLogger("Serializer"));
+#endif
 
 const string Serializer::schemaMarker = "//--AVRO--";
 
@@ -54,7 +53,7 @@ Serializer::~Serializer() {
 Serializer::Serializer(std::string configFilePath) :
         _configFilePath(boost::trim_copy(configFilePath)) {
 
-    LOG4CXX_DEBUG(logger, "Schema established to = " << configFilePath);
+    LOG_DEBUG("Schema established to = " << configFilePath);
     configure();
 }
 
@@ -74,7 +73,7 @@ const string& Serializer::configFilePath() const {
 void Serializer::configure() {
 
     if (_configFilePath.length() == 0) {
-        LOG4CXX_WARN(logger, "No schema configuration file defined");
+        LOG_WARN("No schema configuration file defined");
         return;
     }
 
@@ -85,13 +84,13 @@ void Serializer::configure() {
     path schemaPath(_configFilePath);
     string fullSchemaPath = system_complete(schemaPath).string();
 
-    LOG4CXX_DEBUG(logger, "Full schema path: " << fullSchemaPath);
+    LOG_DEBUG("Full schema path: " << fullSchemaPath);
 
     ifstream schemaFile(fullSchemaPath);
 
     if (!schemaFile.is_open()) {
         string errorMessage("Unable to open file: " + fullSchemaPath + ". Changing to raw serialization.");
-        LOG4CXX_WARN(logger, errorMessage);
+        LOG_WARN(errorMessage);
         return;
     }
 
@@ -114,9 +113,9 @@ void Serializer::serialize(const string& entry, auto_ptr<avro::OutputStream>& da
         writeHeader(baseEncoder);
         writeDataBlock(baseEncoder, datum, data->byteCount());
 
-        LOG4CXX_DEBUG(logger, "Data buffer size: " << data->byteCount());
+        LOG_DEBUG("Data buffer size: " << data->byteCount());
 
-        if (LOG4CXX_UNLIKELY(logger->isTraceEnabled())) {
+        if (Constants::IS_TRACE_ENABLED) {
 
             /* Persist to file */
 
@@ -145,7 +144,7 @@ void Serializer::serialize(const string& entry, auto_ptr<avro::OutputStream>& da
 void Serializer::loadMapper(istream &is) {
 
     if (!is.good()) {
-        LOG4CXX_WARN(logger, "Invalid schema file. Changing to raw serialization");
+        LOG_WARN("Invalid schema file. Changing to raw serialization");
     }
 
     try {
@@ -171,7 +170,7 @@ void Serializer::loadMapper(istream &is) {
 
                 if (regex_match(header, what, rex)) {
                     _mapper.pattern(what[1]);
-                    LOG4CXX_DEBUG(logger, "Mapper pattern to use: " << _mapper.pattern());
+                    LOG_DEBUG("Mapper pattern to use: " << _mapper.pattern());
                 }
             }
         }
@@ -185,19 +184,19 @@ void Serializer::loadMapper(istream &is) {
 
         setMetadata(AVRO_SCHEMA_KEY, oss.str());
 
-        if (LOG4CXX_UNLIKELY(logger->isDebugEnabled())) {
+        if (Constants::IS_DEBUG_ENABLED) {
             debugSchemaNode(_mapper);
         }
     }
     catch (const avro::Exception &e) {
-        LOG4CXX_WARN(logger, "Unexpected AVRO error. Changing to raw mode.\nDetail: " << e.what());
+        LOG_WARN("Unexpected AVRO error. Changing to raw mode.\nDetail: " << e.what());
     }
 }
 
 void Serializer::debugSchemaNode(const avro::ValidSchema &schema) const {
     const avro::NodePtr &root = schema.root();
 
-    LOG4CXX_DEBUG(logger, "SCHEMA:"
+    LOG_DEBUG("SCHEMA:"
             << "\nfullname: " << root->name()
             << "\nnames: " << root->names()
             << "\nleaves: " << root->leaves()
@@ -205,17 +204,17 @@ void Serializer::debugSchemaNode(const avro::ValidSchema &schema) const {
 }
 
 void Serializer::setMetadata(const string& key, const string& value) {
-    LOG4CXX_DEBUG(logger, "Setting metadata key: " << key);
+    LOG_DEBUG("Setting metadata key: " << key);
 
     vector<uint8_t> v(value.size());
     copy(value.begin(), value.end(), v.begin());
     _metadata[key] = v;
 
-    LOG4CXX_TRACE(logger, "Metadata key value set to: " << value);
+    LOG_TRACE("Metadata key value set to: " << value);
 }
 
 void Serializer::writeHeader(avro::EncoderPtr& e) {
-    LOG4CXX_DEBUG(logger, "Write header");
+    LOG_DEBUG("Write header");
 
     avro::encode(*e, magic);
     avro::encode(*e, _metadata);
@@ -225,7 +224,7 @@ void Serializer::writeHeader(avro::EncoderPtr& e) {
 }
 
 void Serializer::writeDataBlock(avro::EncoderPtr& e, const avro::GenericDatum& datum, int64_t byteCount) {
-    LOG4CXX_DEBUG(logger, "Write data block");
+    LOG_DEBUG("Write data block");
 
     // A long indicating the count of objects in this block
 
@@ -258,6 +257,7 @@ DataBlockSync Serializer::makeSync() {
         sync[i] = random_generator();
     }
 
+    LOG_DEBUG("Calculated data block sync marker = " << sync.data());
+
     return sync;
 }
-

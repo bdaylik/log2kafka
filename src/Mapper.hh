@@ -38,10 +38,7 @@
 
 #include <boost/xpressive/xpressive.hpp>
 
-#include <log4cxx/logger.h>
-
-#include "Constants.hh"
-#include "Exceptions.hh"
+#include "config.hh"
 
 /**
  * An utility class that map text entries to AVRO datum generic instances for
@@ -77,10 +74,12 @@ private:
 
     /*-- static fields --*/
 
+#ifdef _LOG2KAFKA_USE_LOG4CXX_
     /**
      * Class logger.
      */
     static log4cxx::LoggerPtr logger;
+#endif
 
     /*-- fields --*/
 

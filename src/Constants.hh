@@ -37,6 +37,10 @@
  */
 class Constants {
 public:
+    static bool LOG_VERBOSITY;
+    static bool IS_TRACE_ENABLED;
+    static bool IS_DEBUG_ENABLED;
+
     /**
      * Default Client ID value: Log2Kafka Producer
      */

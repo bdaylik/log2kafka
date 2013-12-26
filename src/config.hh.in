@@ -7,7 +7,7 @@
  * @copyright Licensed under the Apache License, Version 2.0
  * @copyright http://www.apache.org/licenses/LICENSE-2.0
  */
- 
+
 /*
  * Copyright 2013 Produban
  *
@@ -25,7 +25,7 @@
  */
 
 #pragma once
- 
+
 #ifndef _LOG2KAFKA_HH_
 #define _LOG2KAFKA_HH_
 
@@ -34,18 +34,50 @@
 #define @CMAKE_PROJECT_NAME@_VERSION_MINOR @TARGET_VERSION_MINOR@
 #define @CMAKE_PROJECT_NAME@_VERSION "@TARGET_VERSION@"
 
+#cmakedefine _LOG2KAFKA_USE_LOG4CXX_
+
 #include <csignal>
 #include <iostream>
 #include <string>
 
 #include <boost/program_options.hpp>
 
+#if defined _LOG2KAFKA_USE_LOG4CXX_
+
 #include <log4cxx/logger.h>
 #include <log4cxx/basicconfigurator.h>
 #include <log4cxx/propertyconfigurator.h>
 #include <log4cxx/helpers/exception.h>
 
-#include "ClientFacade.hh"
+#define LOG_TRACE(m) LOG4CXX_TRACE(logger, m)
+#define LOG_DEBUG(m) LOG4CXX_DEBUG(logger, m)
+#define LOG_INFO(m) LOG4CXX_INFO(logger, m)
+#define LOG_WARN(m) LOG4CXX_WARN(logger, m)
+#define LOG_ERROR(m) LOG4CXX_ERROR(logger, m)
+#define LOG_FATAL(m) LOG4CXX_FATAL(logger, m)
+
+#else
+
+#ifdef NDEBUG
+
+#define LOG_TRACE(m)
+#define LOG_DEBUG(m)
+
+#else
+
+#define LOG_TRACE(m) if (Constants::LOG_VERBOSITY) { cout << "TRACE: " << m << endl; }
+#define LOG_DEBUG(m) if (Constants::LOG_VERBOSITY) { cout << "DEBUG: " << m << endl; }
+
+#endif /*NDEBUG */
+
+#define LOG_INFO(m) if (Constants::LOG_VERBOSITY) { cout << "INFO: " << m << endl; }
+#define LOG_WARN(m) if (Constants::LOG_VERBOSITY) { cout << "WARN: " << m << endl; }
+#define LOG_ERROR(m) cerr << "ERROR: " << m << endl
+#define LOG_FATAL(m) cerr << "FATAL: " << m << endl
+
+#endif /*_LOG2KAFKA_USE_LOG4CXX_ */
+
 #include "Constants.hh"
+#include "Exceptions.hh"
 
 #endif /* _LOG2KAFKA_HH_ */

@@ -30,11 +30,14 @@
 
 using namespace std;
 using namespace boost::xpressive;
+
+#ifdef _LOG2KAFKA_USE_LOG4CXX_
 using namespace log4cxx;
 
 /*-- Static fields --*/
 
 LoggerPtr Mapper::logger(Logger::getLogger("Mapper"));
+#endif
 
 /*-- constructors/destructor --*/
 
@@ -66,13 +69,13 @@ void Mapper::map(avro::GenericDatum& datum, const string& entry) {
 
     if (regex_match(entry, what, _regex)) {
 
-        LOG4CXX_DEBUG(logger, "Valid entry detected: " << what[0].str());
+        LOG_DEBUG("Valid entry detected: " << what[0].str());
 
         if (datum.type() == avro::AVRO_RECORD) {
             std::istringstream ss;
 
             avro::GenericRecord& record = datum.value<avro::GenericRecord>();
-            LOG4CXX_DEBUG(logger, "Field count: " << record.fieldCount());
+            LOG_DEBUG("Field count: " << record.fieldCount());
 
             for (size_t i = 0; i < record.fieldCount(); ++i) {
                 avro::GenericDatum& field = record.fieldAt(i);
@@ -114,7 +117,7 @@ void Mapper::map(avro::GenericDatum& datum, const string& entry) {
                     record.setFieldAt(i, avro::GenericDatum(ss.str()));
                 }
 
-                LOG4CXX_DEBUG(logger, "Field " << i << " = " << ss.str());
+                LOG_DEBUG("Field " << i << " = " << ss.str());
 
                 ss.clear();
             }

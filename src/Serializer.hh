@@ -53,9 +53,6 @@
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/xpressive/xpressive.hpp>
 
-#include <log4cxx/logger.h>
-
-#include "Constants.hh"
 #include "Mapper.hh"
 
 typedef boost::array<uint8_t, 4> Magic;
@@ -115,10 +112,12 @@ private:
 
     /*-- static fields --*/
 
+#ifdef _LOG2KAFKA_USE_LOG4CXX_
     /**
      * Class logger.
      */
     static log4cxx::LoggerPtr logger;
+#endif
 
     /**
      * Text that mark the beginning of the AVRO schema definition in the
