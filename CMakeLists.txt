@@ -18,6 +18,19 @@ cmake_minimum_required (VERSION 2.6)
 
 project (log2kafka)
 
+#
+# Options
+#
+
+option (USE_LOG4CXX "Use apache log4cxx library" OFF)
+option (KAFKA_LINK_STATIC "For static linking of kafka library" OFF)
+option (AVRO_LINK_STATIC "For static linking of avro library" OFF)
+option (BUILD_DOC "Create and install the API documentation (requires Doxygen)" OFF)
+
+#
+# Global configuration
+#
+
 set (TARGET_VERSION_MAJOR 1)
 set (TARGET_VERSION_MINOR 0)
 set (TARGET_VERSION "${TARGET_VERSION_MAJOR}.${TARGET_VERSION_MINOR}")
@@ -83,8 +96,12 @@ endif ()
 # Find Logging 
 #
 
-find_package (ApachePortableRuntime REQUIRED)
-find_package (Log4CXX REQUIRED)
+if (USE_LOG4CXX)
+    add_definitions (-D_LOG2KAFKA_USE_LOG4CXX_)
+    find_package (ApachePortableRuntime REQUIRED)
+    find_package (Log4CXX REQUIRED)    
+    include_directories (${APR_INCLUDE_DIRS} ${LOG4CXX_INCLUDE_DIRS})
+endif ()
 
 # Find Snappy
 
@@ -111,8 +128,6 @@ find_package (Log4CXX REQUIRED)
 
 find_package (KafkaC REQUIRED)
 
-option (KAFKA_LINK_STATIC "For static linking of kafka library" OFF)
-
 if (KAFKA_LINK_STATIC)
     message (STATUS "Forced static linking of kafka library")
     add_library (kafka STATIC IMPORTED)
@@ -130,8 +145,6 @@ set_property (TARGET kafka PROPERTY IMPORTED_LOCATION ${KAFKA_LIBRARIES})
 
 find_package (AvroCPP REQUIRED)
 
-option (AVRO_LINK_STATIC "For static linking of avro library" OFF)
-
 if (AVRO_LINK_STATIC)
     message (STATUS "Forced static linking of avro library")
     add_library (avro STATIC IMPORTED)
@@ -146,8 +159,6 @@ set_property (TARGET avro PROPERTY IMPORTED_LOCATION ${AVRO_LIBRARIES})
 
 include_directories (
     ${ZLIB_INCLUDE_DIRS}
-    ${APR_INCLUDE_DIRS}
-    ${LOG4CXX_INCLUDE_DIRS}
     ${PROJECT_BINARY_DIR}
 )
 
@@ -164,27 +175,25 @@ set (LIBS
 include (InstallRequiredSystemLibraries)
 add_subdirectory (src)
 
-file (GLOB log4cxx-lib "${LOG4CXX_LIBRARY_DIR}/${LOG4CXX_LIBRARY_NAME}.*")
+# file (GLOB log4cxx-lib "${LOG4CXX_LIBRARY_DIR}/${LOG4CXX_LIBRARY_NAME}.*")
 
-install(
-    FILES
-        ${log4cxx-lib}
-    DESTINATION
-        ${CMAKE_PREFIX_PATH}/lib
-)                      
+# install(
+    # FILES
+        # ${log4cxx-lib}
+    # DESTINATION
+        # ${CMAKE_PREFIX_PATH}/lib
+# )                      
 
-install(
-    DIRECTORY
-        ${LOG4CXX_INCLUDE_DIRS}
-    DESTINATION
-        ${CMAKE_PREFIX_PATH}/include
-)
+# install(
+    # DIRECTORY
+        # ${LOG4CXX_INCLUDE_DIRS}
+    # DESTINATION
+        # ${CMAKE_PREFIX_PATH}/include
+# )
 
 #
 # Documentation settings
 #
-
-option (BUILD_DOC "Create and install the HTML based API documentation (requires Doxygen)" OFF)
 
 if (BUILD_DOC)
 
@@ -244,26 +253,12 @@ set (CPACK_PACKAGE_VERSION_MAJOR "1")
 set (CPACK_PACKAGE_VERSION_MINOR "0")
 set (CPACK_PACKAGE_VERSION_PATCH "0")
 set (CPACK_PACKAGE_INSTALL_DIRECTORY "/")
-
-if (WIN32 AND NOT UNIX)
-  # There is a bug in NSI that does not handle full unix paths properly. Make
-  # sure there is at least one set of four (4) backlasshes.
-  set (CPACK_PACKAGE_ICON "${CMake_SOURCE_DIR}/Utilities/Release\\\\InstallIcon.bmp")
-  set (CPACK_NSIS_INSTALLED_ICON_NAME "bin\\\\${CMAKE_PROJECT_NAME}.exe")
-  set (CPACK_NSIS_DISPLAY_NAME "${CPACK_PACKAGE_INSTALL_DIRECTORY} ${CPACK_PACKAGE_DESCRIPTION_SUMMARY}")
-  #set (CPACK_NSIS_HELP_LINK "http:\\\\\\\\www.${CMAKE_PROJECT_NAME}.org")
-  #set (CPACK_NSIS_URL_INFO_ABOUT "http:\\\\\\\\www.${CMAKE_PROJECT_NAME}.com")
-  #set (CPACK_NSIS_CONTACT "produban@${CMAKE_PROJECT_NAME}.com")
-  #set (CPACK_NSIS_MODIFY_PATH ON)
-else ()
-  set (CPACK_STRIP_FILES "bin/${CMAKE_PROJECT_NAME}")
-  set (CPACK_SOURCE_STRIP_FILES "")
-endif ()
+set (CPACK_PACKAGE_EXECUTABLES "${CMAKE_PROJECT_NAME}" "${CMAKE_PROJECT_NAME}")
+#set (CPACK_STRIP_FILES "bin/${CMAKE_PROJECT_NAME}")
+#set (CPACK_SOURCE_STRIP_FILES "")
 
 if (CYGWIN)
     set (CPACK_CYGWIN_PATCH_NUMBER "0")
 endif ()
-
-set (CPACK_PACKAGE_EXECUTABLES "${CMAKE_PROJECT_NAME}" "${CMAKE_PROJECT_NAME}")
 
 include (CPack)
