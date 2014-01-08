@@ -22,7 +22,7 @@
 <stringAttribute key="org.eclipse.cdt.launch.DEBUGGER_START_MODE" value="run"/>
 <booleanAttribute key="org.eclipse.cdt.launch.DEBUGGER_STOP_AT_MAIN" value="true"/>
 <stringAttribute key="org.eclipse.cdt.launch.DEBUGGER_STOP_AT_MAIN_SYMBOL" value="main"/>
-<stringAttribute key="org.eclipse.cdt.launch.PROGRAM_ARGUMENTS" value="-b 180.133.244.12:9092 -t devops -s apache-combined.conf -l /etc/log2kafka/log4cxx.properties -m &quot;180.88.92.4 - - [01/Jul/2013:08:54:47 +0200] \&quot;GET /brasil/web/guest/home;jsessionid=fGQTdj5AZloiolih_G8_JGj HTTP/1.1\&quot; 200 50523 \&quot;http://liferayce.dev.gsnet.corp/brasil/web/guest/home;jsessionid=fGQTdj5AZloiolih_G8_JGj\&quot; \&quot;Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.22 (KHTML, like Gecko) Chrome/25.0.1364.97 Safari/537.22\&quot;&quot;"/>
+<stringAttribute key="org.eclipse.cdt.launch.PROGRAM_ARGUMENTS" value="--verbose -b 180.133.244.12:9092 -t devops -s apache-combined.conf -f config.ini -m &quot;180.88.92.4 - - [01/Jul/2013:08:54:47 +0200] \&quot;GET /brasil/web/guest/home;jsessionid=fGQTdj5AZloiolih_G8_JGj HTTP/1.1\&quot; 200 50523 \&quot;http://liferayce.dev.gsnet.corp/brasil/web/guest/home;jsessionid=fGQTdj5AZloiolih_G8_JGj\&quot; \&quot;Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.22 (KHTML, like Gecko) Chrome/25.0.1364.97 Safari/537.22\&quot;&quot;"/>
 <stringAttribute key="org.eclipse.cdt.launch.PROGRAM_NAME" value="build/cygwin/src/log2kafka.exe"/>
 <stringAttribute key="org.eclipse.cdt.launch.PROJECT_ATTR" value="log2kafka"/>
 <stringAttribute key="org.eclipse.cdt.launch.PROJECT_BUILD_CONFIG_ID_ATTR" value="cdt.managedbuild.config.gnu.cygwin.exe.debug.974822887"/>
