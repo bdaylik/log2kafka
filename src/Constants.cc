@@ -34,6 +34,7 @@ bool Constants::IS_TRACE_ENABLED = false;
 bool Constants::IS_DEBUG_ENABLED = false;
 
 const string Constants::DEFAULT_CLIENT_ID = "Log2Kafka Producer";
-const string Constants::DEFAULT_SCHEMA_PATH = "/etc/log2kafka/";
-const string Constants::DEFAULT_MESSAGE_KEY = "L2K"; // Simply the acronym for log2kafka
+const string Constants::DEFAULT_CONFIG_PATH = "/etc/log2kafka/";
 const int Constants::DEFAULT_CALLBACK_WAITING_TIMEOUT = 1000;
+const string Constants::KAFKA_CLIENT_OPTION_PREFIX = "kafka.";
+const string Constants::KAFKA_TOPIC_OPTION_PREFIX = "kafka_topic.";

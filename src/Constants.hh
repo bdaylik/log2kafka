@@ -52,12 +52,9 @@ public:
      * Used if a relative value is given through the corresponding command
      * line argument.
      */
-    static const std::string DEFAULT_SCHEMA_PATH;
+    static const std::string DEFAULT_CONFIG_PATH;
 
-    /**
-     * Default message key: L2K
-     */
-    static const std::string DEFAULT_MESSAGE_KEY;
+
 
     /**
      * Default minimum amount of time that a kafka event callback will block
@@ -66,9 +63,16 @@ public:
     static const int DEFAULT_CALLBACK_WAITING_TIMEOUT;
 
     /**
-     * Default acknowledgement timeout: 2000 ms
+     * Option name prefix used for librdkafka client configuration.
+     * Value: "kafka."
      */
-    static const int DEFAULT_TIMEOUT_ACKS;
+    static const std::string KAFKA_CLIENT_OPTION_PREFIX;
+
+    /**
+     * Option name prefix used for librdkafka topic configuration.
+     * Value: "kafka_topic."
+     */
+    static const std::string KAFKA_TOPIC_OPTION_PREFIX;
 };
 
 #endif /* _LOG2KAFKA_CONSTANTS_HH_ */
