@@ -32,6 +32,8 @@ using namespace boost::filesystem;
 using namespace boost::xpressive;
 
 #ifdef _LOG2KAFKA_USE_LOG4CXX_
+using namespace log4cxx;
+
 log4cxx::LoggerPtr Serializer::logger(Logger::getLogger("Serializer"));
 #endif
 
@@ -51,7 +53,7 @@ Serializer::~Serializer() {
 }
 
 Serializer::Serializer(std::string configFilePath) :
-        _configFilePath(boost::trim_copy(configFilePath)) {
+    configFilePath_(boost::trim_copy(configFilePath)) {
 
     LOG_DEBUG("Schema established to = " << configFilePath);
     configure();
@@ -61,51 +63,50 @@ Serializer::Serializer(std::string configFilePath) :
 
 void Serializer::configFilePath(std::string configFilePath) {
     boost::trim(configFilePath);
-    this->_configFilePath = configFilePath;
+    this->configFilePath_ = configFilePath;
 }
 
 const string& Serializer::configFilePath() const {
-    return this->_configFilePath;
+    return this->configFilePath_;
 }
 
 /*-- methods --*/
 
 void Serializer::configure() {
 
-    if (_configFilePath.length() == 0) {
+    if (configFilePath_.length() == 0) {
         LOG_WARN("No schema configuration file defined");
         return;
     }
 
-    if (_configFilePath[0] != '/') {
-        _configFilePath.insert(0, Constants::DEFAULT_SCHEMA_PATH);
+    if (configFilePath_[0] != '/') {
+        configFilePath_.insert(0, Constants::DEFAULT_CONFIG_PATH);
     }
 
-    path schemaPath(_configFilePath);
+    path schemaPath(configFilePath_);
     string fullSchemaPath = system_complete(schemaPath).string();
 
     LOG_DEBUG("Full schema path: " << fullSchemaPath);
 
     ifstream schemaFile(fullSchemaPath);
 
-    if (!schemaFile.is_open()) {
-        string errorMessage("Unable to open file: " + fullSchemaPath + ". Changing to raw serialization.");
-        LOG_WARN(errorMessage);
-        return;
+    if (schemaFile.is_open()) {
+        loadMapper(schemaFile);
+        schemaFile.close();
     }
-
-    loadMapper(schemaFile);
-    schemaFile.close();
+    else {
+        LOG_WARN("Unable to open file: " << fullSchemaPath);
+    }
 }
 
 void Serializer::serialize(const string& entry, auto_ptr<avro::OutputStream>& data) {
 
-    avro::GenericDatum datum(_mapper);
+    avro::GenericDatum datum(mapper_);
 
-    if (_mapper.pattern() != "") {
+    if (mapper_.pattern() != "") {
 
-        _mapper.map(datum, entry);
-        _sync = makeSync();
+        mapper_.map(datum, entry);
+        sync_ = makeSync();
 
         avro::EncoderPtr baseEncoder = avro::binaryEncoder();
         baseEncoder->init(*data);
@@ -119,16 +120,12 @@ void Serializer::serialize(const string& entry, auto_ptr<avro::OutputStream>& da
 
             /* Persist to file */
 
+            const char* tempFileName = buildTempFileName();
+
+            LOG_TRACE("Generating persistent file: " << tempFileName);
+
             auto_ptr<avro::InputStream> inraw = avro::memoryInputStream(*data);
-
-            hash<std::string> hash_fn;
-            time_t now = time(NULL);
-
-            ostringstream fileName;
-
-            fileName << "/tmp/avro_" << hash_fn(ctime(&now)) << ".txt";
-
-            std::auto_ptr<avro::OutputStream> fileStream = avro::fileOutputStream(fileName.str().data());
+            auto_ptr<avro::OutputStream> fileStream = avro::fileOutputStream(tempFileName);
 
             copy(*inraw, *fileStream);
 
@@ -145,6 +142,7 @@ void Serializer::loadMapper(istream &is) {
 
     if (!is.good()) {
         LOG_WARN("Invalid schema file. Changing to raw serialization");
+        return;
     }
 
     try {
@@ -154,7 +152,7 @@ void Serializer::loadMapper(istream &is) {
         smatch what;
 
         string header;
-        std::size_t found;
+        size_t found;
 
         for (;;) {
             getline(is, header);
@@ -169,38 +167,47 @@ void Serializer::loadMapper(istream &is) {
                 // Extract the regular expression pattern for mapping (if present)
 
                 if (regex_match(header, what, rex)) {
-                    _mapper.pattern(what[1]);
-                    LOG_DEBUG("Mapper pattern to use: " << _mapper.pattern());
+                    mapper_.pattern(what[1]);
+                    LOG_DEBUG("Mapper pattern to use: " << mapper_.pattern());
                 }
             }
         }
 
-        avro::compileJsonSchema(is, _mapper);
-
         setMetadata(AVRO_CODEC_KEY, AVRO_NULL_CODEC);
+        avro::compileJsonSchema(is, mapper_);
+        setMetadata(AVRO_SCHEMA_KEY, mapper_.compactJson());
 
-        ostringstream oss;
-        _mapper.toJson(oss);
-
-        setMetadata(AVRO_SCHEMA_KEY, oss.str());
-
-        if (Constants::IS_DEBUG_ENABLED) {
-            debugSchemaNode(_mapper);
-        }
+        if (Constants::IS_DEBUG_ENABLED) debugSchemaNode(mapper_);
     }
     catch (const avro::Exception &e) {
         LOG_WARN("Unexpected AVRO error. Changing to raw mode.\nDetail: " << e.what());
     }
 }
 
+const char* Serializer::buildTempFileName() {
+    hash<string> hash_fn;
+    time_t now = time(NULL);
+
+    ostringstream fileName;
+    fileName << "log2kafka_avro_" << hash_fn(ctime(&now)) << ".txt";
+
+#ifdef BOOST_FILESYSTEM_V3
+    path tempFile(temp_directory_path() / fileName.str());
+#else
+    path tempFile(Util::getTempDirectoryPath() / fileName.str());
+#endif
+
+    return tempFile.string().data();
+}
+
 void Serializer::debugSchemaNode(const avro::ValidSchema &schema) const {
     const avro::NodePtr &root = schema.root();
 
     LOG_DEBUG("SCHEMA:"
-            << "\nfullname: " << root->name()
-            << "\nnames: " << root->names()
-            << "\nleaves: " << root->leaves()
-            << "\nschema: " << *root);
+        << "\nfullname: " << root->name()
+        << "\nnames: " << root->names()
+        << "\nleaves: " << root->leaves()
+        << "\nschema: " << *root);
 }
 
 void Serializer::setMetadata(const string& key, const string& value) {
@@ -208,7 +215,7 @@ void Serializer::setMetadata(const string& key, const string& value) {
 
     vector<uint8_t> v(value.size());
     copy(value.begin(), value.end(), v.begin());
-    _metadata[key] = v;
+    metadata_[key] = v;
 
     LOG_TRACE("Metadata key value set to: " << value);
 }
@@ -217,33 +224,31 @@ void Serializer::writeHeader(avro::EncoderPtr& e) {
     LOG_DEBUG("Write header");
 
     avro::encode(*e, magic);
-    avro::encode(*e, _metadata);
-    avro::encode(*e, _sync);
+    avro::encode(*e, metadata_);
+    avro::encode(*e, sync_);
 
     e->flush();
 }
 
-void Serializer::writeDataBlock(avro::EncoderPtr& e, const avro::GenericDatum& datum, int64_t byteCount) {
+void Serializer::writeDataBlock(avro::EncoderPtr& e, const avro::GenericDatum& datum,
+    int64_t byteCount) {
+
     LOG_DEBUG("Write data block");
 
     // A long indicating the count of objects in this block
-
     int64_t objectCount = 1;
     avro::encode(*e, objectCount);
 
     // A long indicating the size in bytes of the serialized objects in the
     // current block, after any codec is applied
-
     avro::encode(*e, byteCount);
 
     // The serialized objects. If a codec is specified, this is compressed by
     // that codec.
-
     avro::encode(*e, datum);
 
     // The file's 16-byte sync marker
-
-    avro::encode(*e, _sync);
+    avro::encode(*e, sync_);
 
     e->flush();
 }

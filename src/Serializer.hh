@@ -130,22 +130,22 @@ private:
     /**
      * Schema and pattern mapper configuration file.
      */
-    std::string _configFilePath;
+    std::string configFilePath_;
 
     /**
      * AVRO Schema mapper.
      */
-    Mapper _mapper;
+    Mapper mapper_;
 
     /**
      * Avro data block sync marker.
      */
-    DataBlockSync _sync;
+    DataBlockSync sync_;
 
     /**
      * Avro metadata key-value pairs.
      */
-    Metadata _metadata;
+    Metadata metadata_;
 
     /*-- methods --*/
 
@@ -179,6 +179,12 @@ private:
      *  Calculate and return a Avro data block sync marker.
      */
     DataBlockSync makeSync();
+
+    /**
+     * Build a temporal file name for persistent the serialized message.
+     * Used in trace mode for debugging purposes.
+     */
+    const char* buildTempFileName();
 
     /**
      * Display schema instance debug information.
