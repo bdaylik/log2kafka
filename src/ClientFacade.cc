@@ -27,6 +27,7 @@
 
 #include "ClientFacade.hh"
 
+namespace po = boost::program_options;
 using namespace std;
 
 #ifdef _LOG2KAFKA_USE_LOG4CXX_
@@ -44,23 +45,12 @@ ClientFacade::ClientFacade() {
 
 ClientFacade::~ClientFacade() {
     flush();
+    rd_kafka_topic_destroy(kafkaTopic_);
     rd_kafka_destroy(kafkaClient_);
-}
-
-void ClientFacade::clientId(std::string clientId) {
-    this->clientId_ = clientId;
 }
 
 void ClientFacade::messageKey(std::string messageKey) {
     this->messageKey_ = messageKey;
-}
-
-void ClientFacade::host(std::string host) {
-    this->host_ = host;
-}
-
-void ClientFacade::port(int port) {
-    this->port_ = port;
 }
 
 void ClientFacade::topic(std::string topic) {
@@ -80,53 +70,101 @@ void ClientFacade::topic(std::string topic) {
     topic_ = fields[0];
 }
 
-void ClientFacade::codec(string codec) {
-    this->codec_ = codec;
-}
-
 void ClientFacade::serializer(const string& configFile) {
     unique_ptr<Serializer> serializer(new Serializer(configFile));
     this->serializer_ = move(serializer);
 }
 
 void ClientFacade::initDefaults() {
-    clientId_ = Constants::DEFAULT_CLIENT_ID;
     partition_ = RD_KAFKA_PARTITION_UA;
 }
 
-void ClientFacade::connect() {
+void ClientFacade::configure(const boost::program_options::variables_map& vm) {
+
+    topic(vm["kafka.topic"].as<string>());
+
+    if (vm.count("schema")) {
+        LOG_DEBUG("Schema defined. Using AVRO serialization mode");
+        serializer(vm["schema"].as<string>());
+    }
 
     /* Kafka configuration */
 
     kafkaConfig_ = rd_kafka_conf_new();
+    kafkaTopicConfig_ = rd_kafka_topic_conf_new();
     rd_kafka_conf_res_t kafkaConfResult;
+    char errstr[512];
 
-    // TODO: read additional librdkafka options from a properties files
-//    kafkaConfResult = rd_kafka_conf_set(myconf, "socket.timeout.ms", "600", errstr, sizeof(errstr));
-//     if (res != RD_KAFKA_CONF_OK)
-//         die("%s\n", errstr);
+    LOG_DEBUG("Setting kafka configuration");
+
+    string key;
+    ostringstream value;
+
+    for (po::variables_map::const_iterator it = vm.begin(); it != vm.end(); ++it) {
+
+        bool isKafkaClientOption = (it->first.find(Constants::KAFKA_CLIENT_OPTION_PREFIX) == 0);
+        bool isKafkaTopicOption = (it->first.find(Constants::KAFKA_TOPIC_OPTION_PREFIX) == 0);
+
+        if (isKafkaClientOption || isKafkaTopicOption) {
+
+            if (isKafkaClientOption) {
+                key = it->first.substr(Constants::KAFKA_CLIENT_OPTION_PREFIX.length());
+
+                // 'topic' and 'key' are not valid librdkafka options
+                if (key == "topic" || key == "key") continue;
+
+            }
+            else {
+                key = it->first.substr(Constants::KAFKA_TOPIC_OPTION_PREFIX.length());
+            }
+
+            value.str("");
+
+            if (typeid(int) == it->second.value().type()) {
+                value << it->second.as<int>();
+            }
+            else {
+                value << it->second.as<string>();
+            }
+
+            LOG_DEBUG("\t" << key << " = " << value.str());
+
+            if (isKafkaClientOption) {
+                kafkaConfResult = rd_kafka_conf_set(kafkaConfig_, key.data(), value.str().data(),
+                    errstr, sizeof(errstr));
+            }
+            else {
+                kafkaConfResult = rd_kafka_topic_conf_set(kafkaTopicConfig_, key.data(),
+                    value.str().data(), errstr, sizeof(errstr));
+            }
+
+            if (kafkaConfResult != RD_KAFKA_CONF_OK) {
+                throw ProducerCreationException(errstr);
+            }
+        }
+    }
 
     /* Set up a message delivery report callback.
      * It will be called once for each message, either on successful
-     * delivery to broker, or upon failure to deliver to broker. */
+     * delivery to broker, or upon failure to deliver to broker.
+     */
     rd_kafka_conf_set_dr_cb(kafkaConfig_, ClientFacade::deliverCallback);
 
     /* Create Kafka handle */
-
-    char errstr[512];
 
     if (!(kafkaClient_ = rd_kafka_new(RD_KAFKA_PRODUCER, kafkaConfig_, errstr, sizeof(errstr)))) {
         throw ProducerCreationException(errstr);
     }
 
+    /* Prepare Kafka Topic */
+
+    kafkaTopic_ = rd_kafka_topic_new(kafkaClient_, topic_.data(), kafkaTopicConfig_);
+
     /* Add brokers */
 
-    ostringstream broker;
-    broker << host_ << ":" << port_;
-
-    if (rd_kafka_brokers_add(kafkaClient_, broker.str().data()) == 0) {
-        throw InvalidBrokerException();
-    }
+//    if (rd_kafka_brokers_add(kafkaClient_, broker.str().data()) == 0) {
+//        throw InvalidBrokerException();
+//    }
 }
 
 void ClientFacade::flush() {
@@ -135,16 +173,7 @@ void ClientFacade::flush() {
 
 void ClientFacade::sendMessage(const string& message) {
 
-    LOG_DEBUG("Message: " << message);
-
-    rd_kafka_topic_conf_t *kafkaTopicConfig;
-    rd_kafka_topic_t *kafkaTopic;
     bool sendRawMessage = false;
-
-    /* Prepare Kafka Topic */
-
-    kafkaTopicConfig = rd_kafka_topic_conf_new();
-    kafkaTopic = rd_kafka_topic_new(kafkaClient_, topic_.data(), kafkaTopicConfig);
 
     /* Prepare message */
 
@@ -175,8 +204,12 @@ void ClientFacade::sendMessage(const string& message) {
 
     // Copy message key
     size_t keyLength = messageKey_.length();
-    char* key = new char[keyLength];
-    memcpy(key, messageKey_.data(), keyLength);
+    char* key = NULL;
+
+    if (keyLength > 0) {
+        key = new char[keyLength];
+        memcpy(key, messageKey_.data(), keyLength);
+    }
 
     // Copy message value
     size_t valueLength = 0;
@@ -208,32 +241,34 @@ void ClientFacade::sendMessage(const string& message) {
         LOG_DEBUG("MESSAGE END");
     }
 
-
     /* Send/Produce message. */
 
-    rd_kafka_produce(kafkaTopic, partition_, RD_KAFKA_MSG_F_FREE, reinterpret_cast<char *>(value),
-            valueLength, key, keyLength, NULL);
+    rd_kafka_produce(kafkaTopic_, partition_, RD_KAFKA_MSG_F_FREE, reinterpret_cast<char *>(value),
+        valueLength, key, keyLength, NULL);
 
     LOG_DEBUG("Sent " << valueLength
-            << " bytes to topic " << rd_kafka_topic_name(kafkaTopic)
-            << ":" << partition_);
+        << " bytes to topic " << rd_kafka_topic_name(kafkaTopic_)
+        << ":" << partition_);
 
     /* Poll to handle delivery reports */
 
     rd_kafka_poll(kafkaClient_, 0);
 
-    delete key;
-    //delete value; // Clean forced above by RD_KAFKA_MSG_F_FREE option
+    if (key != NULL) delete key;
+
+    // Clean forced above by RD_KAFKA_MSG_F_FREE option
+    //delete value;
 }
 
-void ClientFacade::deliverCallback(rd_kafka_t *rk, void *payload, size_t len, rd_kafka_resp_err_t error_code,
-        void *opaque, void *msg_opaque) {
+void ClientFacade::deliverCallback(rd_kafka_t *rk, void *payload, size_t len,
+    rd_kafka_resp_err_t error_code, void *opaque, void *msg_opaque) {
 
     if (error_code) {
+        // TODO: show message description instead of code number
         LOG_WARN("Message delivery failed with error code: " << error_code);
     }
     else {
-        LOG_INFO("Message delivered (" << len << " bytes): ");
+        LOG_INFO("Message delivered (" << len << " bytes)");
     }
 }
 
@@ -241,7 +276,7 @@ void ClientFacade::deliverCallback(rd_kafka_t *rk, void *payload, size_t len, rd
  * Generate a unique number to be used as request correlation identification.
  */
 int ClientFacade::generateCorrelationId() {
-    hash<std::string> hash_fn;
+    hash<string> hash_fn;
     time_t now = time(NULL);
     return hash_fn(ctime(&now));
 }

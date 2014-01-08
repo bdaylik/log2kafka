@@ -58,39 +58,20 @@ public:
     /*-- getters/setters --*/
 
     /**
-     * Set the Client ID.
-     */
-    void clientId(std::string clientId);
-
-    /**
      * Set the message key.
      */
     void messageKey(std::string messageKey);
 
     /**
-     * Set the hostname/ip.
-     */
-    void host(std::string host);
-
-    /**
-     * Set the host port.
-     */
-    void port(int port);
-
-    /**
      * Set the topic and possibly the partition.
      *
-     * The format expected of the string is *&lt;topic_name&gt;[:&lt;partition&gt;]*.
+     * The format expected of the string is
+     * <b>&lt;topic_name&gt;[:&lt;partition&gt;]</b>.
      * If omitted, a random partition will be selected.
      *
      * @pre The given topic value is not blank (empty or all spaces).
      */
     void topic(std::string topic);
-
-    /**
-     * Set the kafka compression codec to use.
-     */
-    void codec(std::string codec);
 
     /**
      * Configure an AVRO serializer instance according to the specified
@@ -105,7 +86,7 @@ public:
     /**
      * Prepare and establish the kafka client connection.
      */
-    void connect();
+    void configure(const boost::program_options::variables_map& vm);
 
     /**
      * Flush message queue.
@@ -143,27 +124,19 @@ private:
     rd_kafka_conf_t* kafkaConfig_;
 
     /**
-     * Client identification.
-     *
-     * A user-specified string sent in each request to help trace calls. It
-     * should logically identify the application making the request.
+     * The kafka topic handle.
      */
-    std::string clientId_;
+    rd_kafka_topic_t* kafkaTopic_;
+
+    /**
+     * The kafka topic configuration object;
+     */
+    rd_kafka_topic_conf_t* kafkaTopicConfig_;
 
     /**
      * Kafka messake key.
      */
     std::string messageKey_;
-
-    /**
-     * Broker hostname/ip.
-     */
-    std::string host_;
-
-    /**
-     * Broker port number.
-     */
-    int port_;
 
     /**
      * Topic name.
@@ -175,11 +148,6 @@ private:
      * (Default: -1, random selection)
      */
     int partition_;
-
-    /**
-     * Compression codec name.
-     */
-    std::string codec_;
 
     /**
      * Serializer object to use.
@@ -194,8 +162,9 @@ private:
      *
      * @see rdkafka.h
      */
-    static void deliverCallback(rd_kafka_t* rk, void* payload, size_t len, rd_kafka_resp_err_t error_code,
-            void* opaque, void* msg_opaque);
+    static void deliverCallback(rd_kafka_t* rk, void* payload, size_t len,
+        rd_kafka_resp_err_t error_code,
+        void* opaque, void* msg_opaque);
 
     /*-- methods --*/
 
