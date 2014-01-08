@@ -31,7 +31,7 @@ ProducerCreationException::ProducerCreationException(const char* message) :
 }
 
 ProducerCreationException::ProducerCreationException() :
-        message_("Failed to create new kafka producer") {
+        message_("Failed to create a new kafka producer") {
 }
 
 const char* ProducerCreationException::what() const throw () {
