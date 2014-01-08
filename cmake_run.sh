@@ -14,10 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-mkdir -p build/release
-cd build/release
+OLDDIR=`pwd`
+BASEDIR=$(readlink -ne `dirname $0`)
 
-CMAKE_OPTIONS="${CMAKE_OPTIONS} -DBUILD_DOC:BOOL=ON"
+mkdir -p $BASEDIR/build/release
+cd $BASEDIR/build/release
+
+#CMAKE_OPTIONS="${CMAKE_OPTIONS} -DBUILD_DOC:BOOL=ON"
 
 cmake ../../ ${CMAKE_OPTIONS} 
 make
@@ -25,4 +28,6 @@ make
 if [ -n "$1" ]; then
 	make $1
 fi
+
+cd $OLDDIR
 
