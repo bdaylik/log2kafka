@@ -111,19 +111,59 @@ To get usage help execute:
 
 Where, by default all file arguments are relative to the `/etc/log2kafka` if a relative path is indicated.
 
+### Avro Schema Specification
+
+The Avro json schema and corresponding mapping rule is a simple text file composed of a **regular expression pattern** and a **avro schema** separated by a `//--AVRO--` text marker. Several examples can be found at  [/etc/log2kafka](./src/conf).
+
+The following example correspond to the standard **combined** format of the Apache Web Server.
+
+```
+pattern : (\d+.\d+.\d+.\d+)\s+([\-\w]+)\s+([\-\w]+)\s+\[(\d+\/\S+\/\d+:\d+:\d+:\d+\s+[-+]{0,1}\d+)\]\s+\"(.*?)\s+HTTP\/\d+\.\d+\"\s+(\d+)\s+(\-|\d+)\s+\"(.*?)\"\s+\"(.*?)\"
+//--AVRO--
+{
+    "namespace": "openbus",
+    "type": "record",
+    "name": "ApacheCombined",
+    "doc": "Apache log entry (combined format)",
+    "fields": [
+        {"name": "host", "type": "string"},
+        {"name": "log", "type": "string"},
+        {"name": "user", "type": "string"},
+        {"name": "datetime", "type": "string"},
+        {"name": "request", "type": "string"},
+        {"name": "status", "type": "string"},
+        {"name": "size", "type": "string"},
+        {"name": "referer", "type": "string"},
+        {"name": "agent", "type": "string"}
+    ]
+}
+```
+
+Here, the regular expression groups defined in the **pattern** must match the schema attributes in secuential order. Any failure in the pattern interpretation or in the attribute matching will make log2kafka fallback to sending messages in plain text (as received).
+
+You can also use other Avro primitive types for field specification. For example, in the preceding schema definition the `size` attribute may be declared as `int` or `long`. Again, a failure to validate the schema or the data according to the definition, will cause log2kafka falling back to plain text sending.
+
+Once defined, you can use the schema configuration file with the `--schema` (also `-s`) argument.
+
+Example:
+
+```bash
+log2kafka -b kafka_broker:9092 -t test_topic -s apache-combined.conf -f config.ini
+```
+
 ### INI File Configuration
 
 You can especify execution options from a INI-style configuration file, to do this indicate it using the `--config` command line argument (also `-f`).
 
 Example:
 
-```apache
+```bash
 log2kafka -f config.ini
 ```
 or even:
 
-```apache
-log2kafka -b kafka_broker:9092 -t test_topic -s apache-combined -f config.ini
+```bash
+log2kafka -b kafka_broker:9092 -t test_topic -s apache-combined.conf -f config.ini
 ```
 
 If an option is specified in both places, command line and configuration file, those provided from command line take precedence.
@@ -139,7 +179,7 @@ To pipe the log entries under Apache add a new **CustomLog** instruction in the 
 Example:
 
 ```apache
-CustomLog "|log2kafka -b kafka_broker:9092 -t test_topic -s apache-combined -l log4cxx.properties" combined
+CustomLog "|log2kafka -b kafka_broker:9092 -t test_topic -s apache-combined.conf -l log4cxx.properties" combined
 ```
 
 ### Debugging
