@@ -49,30 +49,44 @@ Mapper::~Mapper() {
 
 /*-- getters/setters --*/
 
-void Mapper::pattern(std::string pattern) {
-    this->_pattern = pattern;
+void Mapper::pattern(string pattern) {
+    pattern_ = pattern;
 }
 
 const string& Mapper::pattern() const {
-    return this->_pattern;
+    return pattern_;
+}
+
+const string& Mapper::compactJson() {
+    if (compactJson_.length() == 0 && root()->isValid()) {
+        ostringstream oss;
+        toJson(oss);
+
+        /* clean pretty-print format */
+
+        sregex newlinePlusLeadingSpace = _ln >> *_s;
+        compactJson_ = regex_replace(oss.str(), newlinePlusLeadingSpace, "");
+    }
+
+    return compactJson_;
 }
 
 /*-- methods --*/
 
 void Mapper::map(avro::GenericDatum& datum, const string& entry) {
 
-    if (_regex.regex_id() == 0) {
-        _regex = sregex::compile(_pattern);
+    if (regex_.regex_id() == 0) {
+        regex_ = sregex::compile(pattern_);
     }
 
     smatch what;
 
-    if (regex_match(entry, what, _regex)) {
+    if (regex_match(entry, what, regex_)) {
 
         LOG_DEBUG("Valid entry detected: " << what[0].str());
 
         if (datum.type() == avro::AVRO_RECORD) {
-            std::istringstream ss;
+            istringstream ss;
 
             avro::GenericRecord& record = datum.value<avro::GenericRecord>();
             LOG_DEBUG("Field count: " << record.fieldCount());

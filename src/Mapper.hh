@@ -38,7 +38,7 @@
 
 #include <boost/xpressive/xpressive.hpp>
 
-#include "config.hh"
+#include "util.hh"
 
 /**
  * An utility class that map text entries to AVRO datum generic instances for
@@ -51,6 +51,12 @@ public:
     virtual ~Mapper();
 
     /*-- getters/setters --*/
+
+    /**
+     * Return the schema json representation to include as metadata of the serialized
+     * message or an empty string if the schema is not valid.
+     */
+    const std::string& compactJson();
 
     /**
      * Set the regular expression pattern to use for fields mapping.
@@ -84,15 +90,21 @@ private:
     /*-- fields --*/
 
     /**
+     * Schema json representation to include as metadata of the serialized
+     * message.
+     */
+    std::string compactJson_;
+
+    /**
      * Regular expresion pattern to use to map entries to the AVRO schema
      * definition.
      */
-    std::string _pattern;
+    std::string pattern_;
 
     /**
      * Compiled regular expression pattern.
      */
-    boost::xpressive::sregex _regex;
+    boost::xpressive::sregex regex_;
 };
 
 #endif /* _LOG2KAFKA_MAPPER_HH_ */
