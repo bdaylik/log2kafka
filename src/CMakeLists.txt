@@ -17,6 +17,7 @@
 set (MODULE_SOURCE_FILES
     ${CMAKE_PROJECT_NAME}.cc
     Constants.cc
+    Util.cc
     InvalidBrokerException.cc
     InvalidMapperException.cc
     MapperMatchException.cc
