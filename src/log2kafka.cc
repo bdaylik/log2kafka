@@ -35,10 +35,12 @@ LoggerPtr logger(Logger::getLogger(BUILD_NAME));
 #endif
 
 namespace po = boost::program_options;
+using namespace boost::filesystem;
 using namespace std;
 
 /* Forward function declaration */
 
+void parseArguments(int argc, char** argv, po::variables_map& vm);
 inline void validateArguments(const po::variables_map& vm);
 inline void debugArguments(const po::variables_map& vm);
 
@@ -48,50 +50,12 @@ inline void debugArguments(const po::variables_map& vm);
 int main(int argc, char** argv) {
 
     int result = EXIT_SUCCESS;
-
-    po::options_description description("Allowed options");
-
-    description.add_options()
-    ("help,?", "produce help message")
-    ("client,c", po::value<std::string>()->default_value(Constants::DEFAULT_CLIENT_ID),
-            "producer client name/id")
-    ("host,h", po::value<std::string>(), "broker hostname/ip")
-    ("port,p", po::value<int>(), "broker port number")
-    ("topic,t", po::value<std::string>(), "target topic in the form <topic_name>[:<partition>]")
-    ("schema,s", po::value<std::string>(),
-            "(optional) avro definitition file to use for serialization - if omitted the raw entry will be sent")
-    ("key,k", po::value<string>()->default_value(Constants::DEFAULT_MESSAGE_KEY), "kafka message key to use")
-    ("codec,z", po::value<string>(), "(optional) Compression codec: gzip|snappy")
-    ("kafka-config,k", po::value<string>(),
-            "(optional) Additional librdkafka configuration options file path")
-    ("message,m", po::value<std::string>(),
-            "(optional) message to send - if not indicated then standard input is used")
-#ifdef _LOG2KAFKA_USE_LOG4CXX_
-    ("log-config,l", po::value<std::string>(), "(optional) log4cxx configuration file path")
-#else
-    ("verbose", "increase verbosity");
-#endif
-    ("version", "display version number");
-
     po::variables_map vm;
 
     /* Process arguments */
 
     try {
-        po::store(po::parse_command_line(argc, argv, description), vm);
-
-        if (vm.count("help")) {
-            cout << description;
-            return result;
-        }
-        else if (vm.count("version")) {
-            cout << BUILD_NAME << " " << log2kafka_VERSION << std::endl;
-            return result;
-        }
-
-        po::notify(vm);
-
-        validateArguments(vm);
+        parseArguments(argc, argv, vm);
     }
     catch (exception& e) {
         cerr << "ERROR: " << e.what() << endl;
@@ -129,7 +93,7 @@ int main(int argc, char** argv) {
     /* Socket hangups are gracefully handled in librdkafka on socket error
      * without the use of signals, so SIGPIPE should be ignored by
      * the calling program. */
-    signal(SIGPIPE, SIG_IGN );
+    signal(SIGPIPE, SIG_IGN);
 
     /* Select action course route */
 
@@ -137,23 +101,7 @@ int main(int argc, char** argv) {
         /* Prepare client connection proxy */
 
         auto proxy = unique_ptr<ClientFacade>(new ClientFacade());
-
-        proxy->clientId(vm["client"].as<string>());
-        proxy->messageKey(vm["key"].as<string>());
-        proxy->host(vm["host"].as<string>());
-        proxy->port(vm["port"].as<int>());
-        proxy->topic(vm["topic"].as<string>());
-
-        if (vm.count("codec")) {
-            proxy->codec(vm["codec"].as<string>());
-        }
-
-        if (vm.count("schema")) {
-            LOG_DEBUG("Schema defined. Using AVRO serialization mode");
-            proxy->serializer(vm["schema"].as<string>());
-        }
-
-        proxy->connect();
+        proxy->configure(vm);
 
         /* Retrieve message to serialize */
 
@@ -191,30 +139,141 @@ int main(int argc, char** argv) {
     return result;
 }
 
+void parseArguments(int argc, char** argv, po::variables_map& vm) {
+
+    po::options_description generic("Generic options");
+    po::options_description avroOptions("Avro options");
+    po::options_description kafkaOptions("Kafka options");
+
+    /* General options */
+
+    generic.add_options()
+    ("version", "display version number")
+    ("help,?", "produce help message")
+    ("config,f", po::value<std::string>(), "client configuration file path")
+    #ifdef _LOG2KAFKA_USE_LOG4CXX_
+    ("log-config,l", po::value<std::string>(), "log4cxx configuration file path")
+#else
+    ("verbose", "increase verbosity")
+    #endif
+    ("message,m", po::value<std::string>(),
+        "message to send - if not indicated then standard input is used");
+
+    /* Avro options */
+
+    avroOptions.add_options()
+    ("schema,s", po::value<std::string>(),
+        "Avro definitition file to use for serialization - if omitted the raw entry will be sent");
+
+    /* Kafka options */
+
+    kafkaOptions.add_options()
+    ("kafka.client.id,c", po::value<std::string>()->default_value(Constants::DEFAULT_CLIENT_ID),
+        "producer client name/id")
+    ("kafka.metadata.broker.list,b", po::value<std::string>(),
+        "A comma separated list of brokers:\n <host>[:<port>][,...]")
+    ("kafka.topic,t", po::value<std::string>(), "target topic: <topic_name>[:<partition>]")
+    ("kafka_topic.request.required.acks", po::value<int>())
+    ("kafka_topic.request.timeout.ms", po::value<int>())
+    ("kafka_topic.message.timeout.ms", po::value<int>())
+    ("kafka.key,k", po::value<string>(), "kafka message key to use")
+    ("kafka.codec,z", po::value<std::string>(), "Compression codec to use: gzip|snappy")
+    ("kafka.message.max.bytes", po::value<int>())
+    ("kafka.metadata.request.timeout.ms", po::value<int>())
+    ("kafka.topic.metadata.refresh.interval.ms", po::value<int>())
+    ("kafka.topic.metadata.refresh.fast.cnt", po::value<int>())
+    ("kafka.topic.metadata.refresh.fast.interval.ms", po::value<int>())
+    ("kafka.socket.timeout.ms", po::value<int>())
+    ("kafka.socket.send.buffer.bytes", po::value<int>())
+    ("kafka.socket.receive.buffer.bytes", po::value<int>())
+    ("kafka.broker.address.ttl", po::value<int>())
+    ("kafka.statistics.interval.ms", po::value<int>())
+    ("kafka.queued.min.messages", po::value<int>())
+    ("kafka.fetch.wait.max.ms", po::value<int>())
+    ("kafka.fetch.min.bytes", po::value<int>())
+    ("kafka.fetch.error.backoff.ms", po::value<int>())
+    ("kafka.queue.buffering.max.messages", po::value<int>())
+    ("kafka.queue.buffering.max.ms", po::value<int>())
+    ("kafka.message.send.max.retries", po::value<int>())
+    ("kafka.retry.backoff.ms", po::value<int>())
+    ("kafka.batch.num.messages", po::value<int>())
+    ("kafka.request.required.acks", po::value<int>())
+    ("kafka.request.timeout.ms", po::value<int>())
+    ("kafka.message.timeout.ms", po::value<int>())
+    ("kafka.debug", po::value<std::string>(),
+        "A comma-separated list of debug contexts to enable: all,generic,broker,topic,metadata,producer,queue,msg")
+        ;
+
+    po::options_description cmdline_options;
+    cmdline_options.add(generic).add(avroOptions).add(kafkaOptions);
+
+    /*  Parse command line */
+
+    po::store(po::parse_command_line(argc, argv, cmdline_options), vm);
+
+    if (vm.count("help")) {
+        cout << cmdline_options;
+        exit(EXIT_SUCCESS);
+    }
+    else if (vm.count("version")) {
+        cout << BUILD_NAME << " " << log2kafka_VERSION << endl;
+        exit(EXIT_SUCCESS);
+    }
+
+    /* Parse config file */
+
+    if (vm.count("config")) {
+        path configFilePath(vm["config"].as<string>());
+        path configPath(Constants::DEFAULT_CONFIG_PATH);
+
+        if (!configFilePath.is_complete()) {
+            configFilePath = configPath / configFilePath;
+        }
+
+        if (exists(configFilePath)) {
+            ifstream configFile(configFilePath.string());
+
+            LOG_DEBUG("Reading additional options from: " << configFilePath);
+            po::store(po::parse_config_file(configFile, kafkaOptions), vm);
+        }
+        else {
+            LOG_WARN("The indicated configuration file '" << configFilePath << "' does not exist");
+        }
+    }
+
+    /* Validate arguments and prepare options map */
+
+    validateArguments(vm);
+    po::notify(vm);
+}
+
 inline void validateArguments(const po::variables_map& vm) {
 
-    if (!vm.count("host")) {
-        throw invalid_argument("'host' argument was not set.");
+    if (!vm.count("kafka.metadata.broker.list")) {
+        throw invalid_argument("'kafka.metadata.broker.list (-b)' argument was not set.");
     }
 
-    if (!vm.count("port")) {
-        throw invalid_argument("'port' argument was not set.");
-    }
-
-    if (!vm.count("topic")) {
-        throw invalid_argument("'topic' argument was not set.");
+    if (!vm.count("kafka.topic")) {
+        throw invalid_argument("'kafka.topic (-t)' argument was not set.");
     }
 }
 
 inline void debugArguments(const po::variables_map& vm) {
-    LOG_DEBUG("Arguments:"
-            << "\n\tclient: " << vm["client"].as<string>()
-            << "\n\tkey: " << vm["key"].as<string>()
-            << "\n\thost: " << vm["host"].as<string>()
-            << "\n\tport: " << vm["port"].as<int>()
-            << "\n\ttopic: " << vm["topic"].as<string>()
-            << "\n\tschema: " << (vm.count("schema") ? vm["schema"].as<string>() : "")
-            << "\n\tcodec: " << (vm.count("codec") ? vm["codec"].as<string>() : "")
-            << "\n\tlog-config: " << (vm.count("log-config") ? vm["log-config"].as<string>() : "")
-            << "\n\tkafka-config: " << (vm.count("kafka-config") ? vm["kafka-config"].as<string>() : ""));
+
+    if (Constants::IS_DEBUG_ENABLED) {
+        ostringstream buffer("Arguments:");
+
+        for (po::variables_map::const_iterator it = vm.begin(); it != vm.end(); ++it) {
+            buffer << "\n\t" << it->first << ": ";
+
+            if (typeid(int) == it->second.value().type()) {
+                buffer << it->second.as<int>();
+            }
+            else {
+                buffer << it->second.as<string>();
+            }
+        }
+
+        LOG_DEBUG(buffer.str());
+    }
 }
