@@ -48,7 +48,7 @@ find_path(KAFKA_INCLUDE_DIR
 )
 
 if (KAFKA_LINK_STATIC) 
-    set (KAFKA_LOOK_FOR_LIB_NAMES rdkafka.a rdkafka)
+    set (KAFKA_LOOK_FOR_LIB_NAMES librdkafka.a rdkafka)
 else ()
     set (KAFKA_LOOK_FOR_LIB_NAMES rdkafka)
 endif ()
