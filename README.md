@@ -14,7 +14,7 @@ Requirements
 * [Boost library](http://www.boost.org) version 1.38 or later. Apart from the header-only libraries of Boost, log2kafka requires filesystem, system, program_options and xpressive libraries.
 * [Kafka C Library](https://github.com/edenhill/librdkafka)
 * [Avro C++](http://avro.apache.org/docs/current/api/cpp/html/index.html)
-* [Apache log4cxx](http://logging.apache.org/log4cxx/)
+* [Apache log4cxx](http://logging.apache.org/log4cxx/) [optional]
 
 For Boost and log4cxx dependencies you could use the following installation procedures:
 
@@ -36,9 +36,9 @@ For Kafka and Avro C++ libraries see the next section.
 Installation
 ------------
 
-You can download a distribution package for your platform here:
+You can download a distribution package for Linux here:
 
-> TODO: indicate link
+  https://github.com/Produban/log2kafka/releases/latest
 
 Or build the project from sources.
 
@@ -46,7 +46,22 @@ Or build the project from sources.
 
 Building from sources requires cmake 2.6 or later. 
 
-To build under Unix or Cygwin use:
+Before building you may wish to adjust the following CMAKE options:
+
+* USE_LOG4CXX - Use apache log4cxx library. Default: OFF
+* KAFKA_LINK_STATIC - For static linking of kafka library. Default: OFF
+* AVRO_LINK_STATIC - For static linking of avro library. Default: OFF
+* BUILD_DOC - Create and install the API documentation (requires Doxygen). Default: OFF
+
+To do so, execute:
+
+```bash
+export CMAKE_OPTIONS="-DBUILD_DOC:BOOL=ON -DKAFKA_LINK_STATIC:BOOL=ON -DAVRO_LINK_STATIC:BOOL=ON -DUSE_LOG4CXX:BOOL=ON"
+```
+
+with the desired combination of options.
+
+Then, to build under *nix or Cygwin use:
 
 ```bash
 ./cmake_run.sh
@@ -69,17 +84,13 @@ Depending of your plaform, you could find archives and installation scripts in t
   `- log2kafka
 - usr
   |- local
-  |  |- bin
-  |  |- include
-  |  |  |- avro
-  |  |  `- log4cxx
-  |  `- lib
+  |  `- bin
   `- share
      `- doc
         `- log2kafka-<version>
 ```   
         
-* In the case of use an installation script (ej. `log2kafka-1.0.0-Linux.sh`), this will install log2kafka under `<current folder>/log2kafka` and has the same folder layout previously described. To install in another location specify `--prefix=<location>` when running the installation script.
+* In the case you use an installation script (ej. `log2kafka-<version>-Linux.sh`), this will install log2kafka under `<current folder>/log2kafka` and has the same folder layout previously described. To install in another location specify `--prefix=<location>` when running the installation script.
 
 For example, to install under the root of the filesystem, use:
 
@@ -107,17 +118,15 @@ To pipe the log entries under Apache add a new **CustomLog** instruction in the 
 Example:
 
 ```apache
-CustomLog "|log2kafka -t test_topic -h kafka_broker -p 9092 -s apache-combined -l /etc/log2kafka/log4cxx.properties" combined
+CustomLog "|log2kafka -b kafka_broker:9092 -t test_topic -s apache-combined -l log4cxx.properties" combined
 ```
 
 TODO
 ----
 
-* ~~Allow partition selection from command line~~.
-* Make the apache log4cxx optional.
-* ~~Create installation script~~.
-* Allow read librdkafka configuration options from a properties file.
-* Unformat Avro schema metadata header.
+* ~~Make the apache log4cxx optional.~~
+* ~~Allow read librdkafka configuration options from a properties file.~~
+* ~~Unformat Avro schema metadata header.~~
 * Add unit tests sets
 
 License
