@@ -109,6 +109,22 @@ To get usage help execute:
 ./log2kafka --help
 ```
 
+Where, by default all file arguments are relative to the `/etc/log2kafka` if a relative path is indicated.
+
+### INI File Configuration
+
+You can especify execution options from a INI-style configuration file, to do this indicate it using the `--config` command line argument (also `-f`).
+
+Example:
+
+```apache
+log2kafka -b kafka_broker:9092 -t test_topic -s apache-combined -f config.ini" combined
+```
+
+If an option is specified in both places, command line and configuration file, those provided from command line take precedence.
+
+The file [/etc/log2kafka/config-sample.ini](./src/conf/config-sample.ini) is provided as an example.
+
 ### Piped Log Configuration
 
 #### Apache
@@ -127,6 +143,7 @@ TODO
 * ~~Make the apache log4cxx optional.~~
 * ~~Allow read librdkafka configuration options from a properties file.~~
 * ~~Unformat Avro schema metadata header.~~
+* Make default config path relative to `/<installation_folder>/etc/log2kafka` instead of `/etc/log2kafka`
 * Add unit tests sets
 
 License
