@@ -34,8 +34,6 @@ using namespace boost::xpressive;
 #ifdef _LOG2KAFKA_USE_LOG4CXX_
 using namespace log4cxx;
 
-/*-- Static fields --*/
-
 LoggerPtr Mapper::logger(Logger::getLogger("Mapper"));
 #endif
 

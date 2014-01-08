@@ -38,7 +38,7 @@
 
 #include <boost/xpressive/xpressive.hpp>
 
-#include "util.hh"
+#include "Util.hh"
 
 /**
  * An utility class that map text entries to AVRO datum generic instances for
