@@ -42,6 +42,10 @@
 
 #include <boost/program_options.hpp>
 
+#if BOOST_VERSION >= 104600
+#define BOOST_FILESYSTEM_V3
+#endif
+
 #if defined _LOG2KAFKA_USE_LOG4CXX_
 
 #include <log4cxx/logger.h>
