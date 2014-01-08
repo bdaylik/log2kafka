@@ -148,10 +148,10 @@ If your installation was compiled with log4cxx, then configure the appropiate lo
 
 Otherwise, the following rules apply:
 
-* Always send *ERROR* and *FATAL* messages to `stderr`
+* Always send **ERROR** and **FATAL** messages to `stderr`
 * If `--verbose` argument is used, then:
-  * Send *INFO* and *WARN* messages to `stdout`
-  * Also, if compiled without *NDEBUG* (which is the default), then send *DEBUG* and *TRACE* to `stdout`. Conversely, this levels are ignored if *NDEBUG* was used in the compilation.
+  * Send **INFO** and **WARN** messages to `stdout`
+  * Also, if compiled without **NDEBUG** (which is the default), then send **DEBUG** and **TRACE** to `stdout`. Conversely, those levels are ignored if **NDEBUG** was used in the compilation.
    
 Additionally, debug levels specific to the kafka libray can be indicated using the `--kafka.debug` argument.
 
