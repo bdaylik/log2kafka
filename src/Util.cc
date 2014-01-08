@@ -30,6 +30,11 @@
 using namespace std;
 using namespace boost::filesystem;
 
+#ifdef _LOG2KAFKA_USE_LOG4CXX_
+using namespace log4cxx;
+
+log4cxx::LoggerPtr Util::logger(Logger::getLogger("Util"));
+#endif
 
 path Util::getTempDirectoryPath() {
 #   ifdef BOOST_POSIX_API
@@ -50,8 +55,7 @@ path Util::getTempDirectoryPath() {
 
     return p;
 
-#   else  // Windows
-    std::vector<path::value_type> buf(GetTempPathW(0, NULL));
+#   else  // Windows    std::vector<path::value_type> buf(GetTempPathW(0, NULL));
 
     if (buf.empty() || GetTempPathW(buf.size(), &buf[0]) == 0) {
         if(!buf.empty()) ::SetLastError(ENOTDIR);
