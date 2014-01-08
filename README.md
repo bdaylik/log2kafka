@@ -59,7 +59,7 @@ To do so, execute:
 export CMAKE_OPTIONS="-DBUILD_DOC:BOOL=ON -DKAFKA_LINK_STATIC:BOOL=ON -DAVRO_LINK_STATIC:BOOL=ON -DUSE_LOG4CXX:BOOL=ON"
 ```
 
-with the desired combination of options.
+being the above the same combination used for the pre-built installation script generation. You can of course change this to your desired combination of options. 
 
 Then, to build under *nix or Cygwin use:
 
@@ -118,12 +118,17 @@ You can especify execution options from a INI-style configuration file, to do th
 Example:
 
 ```apache
-log2kafka -b kafka_broker:9092 -t test_topic -s apache-combined -f config.ini" combined
+log2kafka -f config.ini
+```
+or even:
+
+```apache
+log2kafka -b kafka_broker:9092 -t test_topic -s apache-combined -f config.ini
 ```
 
 If an option is specified in both places, command line and configuration file, those provided from command line take precedence.
 
-The file [/etc/log2kafka/config-sample.ini](./src/conf/config-sample.ini) is provided as an example.
+The file [/etc/log2kafka/config-sample.ini](./src/conf/config-sample.ini) is provided as example.
 
 ### Piped Log Configuration
 
@@ -136,6 +141,19 @@ Example:
 ```apache
 CustomLog "|log2kafka -b kafka_broker:9092 -t test_topic -s apache-combined -l log4cxx.properties" combined
 ```
+
+### Debugging
+
+If your installation was compiled with log4cxx, then configure the appropiate logging level in the file indicated with the argument `--log-config`. The file [/etc/log2kafka/log4cxx-sample.properties](./src/conf/log4cxx-sample.properties) is provided as example.
+
+Otherwise, the following rules apply:
+
+* Always send *ERROR* and *FATAL* messages to `stderr`
+* If `--verbose` argument is used, then:
+  * Send *INFO* and *WARN* messages to `stdout`
+  * Also, if compiled without *NDEBUG* (which is the default), then send *DEBUG* and *TRACE* to `stdout`. Conversely, this levels are ignored if *NDEBUG* was used in the compilation.
+   
+Additionally, debug levels specific to the kafka libray can be indicated using the `--kafka.debug` argument.
 
 TODO
 ----
