@@ -65,6 +65,22 @@ set (CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "/usr/local")
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 
 #
+# Find Threads package
+#
+if (NOT WIN32 AND NOT CYGWIN AND NOT MSYS)
+  message ("\nLooking for thread headers and libraries")
+  find_package (Threads)
+  
+  if (Threads_FOUND)
+    set (LIBS
+	${LIBS}
+	${CMAKE_THREAD_LIBS_INIT}
+    ) 
+  endif ()
+endif ()
+
+
+#
 # Find Boost
 #
 
