@@ -28,3 +28,4 @@ run.sh
 sync-from-server.sh
 sync-to-server.sh
 /my
+/src/config.hh
