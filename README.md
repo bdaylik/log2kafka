@@ -13,7 +13,7 @@ Requirements
 
 * [Boost library](http://www.boost.org) version 1.38 or later. Apart from the header-only libraries of Boost, log2kafka requires filesystem, system, program_options and xpressive libraries.
 * [Kafka C Library](https://github.com/edenhill/librdkafka)
-* [Avro C++](http://avro.apache.org/docs/current/api/cpp/html/index.html)
+* [Avro C++](http://avro.apache.org/docs/current/api/cpp/html/index.html) version 1.7.5. You can download this version at http://archive.apache.org/dist/avro/avro-1.7.5/cpp/ 
 * [Apache log4cxx](http://logging.apache.org/log4cxx/) [optional]
 
 For Boost and log4cxx dependencies you could use the following installation procedures:
@@ -27,7 +27,7 @@ sudo yum install boost apr apr-util
 On **Debian/Ubuntu**:
 
 ```bash
-sudo apt-get install boost apr apr-util
+sudo apt-get install boost liblog4cxx10-dev
 ```
 
 For Kafka and Avro C++ libraries see the next section.
