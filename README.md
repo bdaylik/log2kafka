@@ -43,10 +43,35 @@ You can download a distribution package for Linux here:
 Or build the project from sources.
 
 ### Build from sources
+Before building you should have the required libraries.
 
-Building from sources requires cmake 2.6 or later. 
+####Steps for installing required libraries on Debian/Ubuntu
+##### Install build requirements
+Make sure you have cmake 2.6 or later, boost 1.5.4 or later and log4cxx
+```
+sudo apt-get install build-essential cmake libboost-all-dev liblog4cxx10-dev
+```
+##### Install Kafka C library
+```
+wget "https://github.com/edenhill/librdkafka/archive/0.8.3.tar.gz"
+tar -xzf 0.8.3.tar.gz
+cd  librdkafka-0.8.3
+make
+sudo make install
+cd ..
+```
+##### Install Avro C++ (1.7.5 is required)
+```
+wget "http://archive.apache.org/dist/avro/avro-1.7.5/cpp/avro-cpp-1.7.5.tar.gz"
+tar -xzf avro-cpp-1.7.5.tar.gz
+cd avro-cpp-1.7.5
+./build.sh test
+sudo ./build.sh install
+cd ..
+```
+That's all for the required libraries.
 
-Before building you may wish to adjust the following CMAKE options:
+You may now wish to adjust the following CMAKE options:
 
 * USE_LOG4CXX - Use apache log4cxx library. Default: OFF
 * KAFKA_LINK_STATIC - For static linking of kafka library. Default: OFF
